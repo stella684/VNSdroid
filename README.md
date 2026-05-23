@@ -62,7 +62,7 @@ Wait for installation to finish.
 
 ## 4. Launch VNSdroid
 
-Inside the extracted VNSdroid folder, open:
+Inside the extracted folder, you may find different versions. Choose the version of VNSdroid you like, then open the VNSdroid folder and open:
 
 ```text
 main.py
