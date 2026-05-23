@@ -80,7 +80,7 @@ games/
     ├── background.zip
     ├── foreground.zip
     ├── sound.zip
-    └── scripts.zip/
+    └── script.zip/
         ├── main.scr
         ├── endings.scr
         └── debug.scr
