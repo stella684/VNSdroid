@@ -1,27 +1,26 @@
 # VNSdroid
-a python &amp; kivy based VNDS interpreter made for Android devices
-# VNSdroid
 
-VNSdroid is a Visual Novel interpreter project created by **stella684**.  
-It allows you to run **Nintendo DS Visual Novel ports** on modern Android devices.
+VNSdroid is a Visual Novel interpreter project created by **stella684**.
 
-This project was made because many old VNDS interpreters no longer work properly on newer phones.
+It allows you to run **Nintendo DS Visual Novel ports** on modern Android devices using Python and Kivy.
+
+This project was created because many older VNDS interpreters no longer work properly on newer phones.
 
 ---
 
 # Features
 
 - Run VNDS/Nintendo DS visual novels on Android
-- Works on modern devices
-- Lightweight and simple
+- Modern device support
+- Lightweight and simple UI
 - Built with Python + Kivy
-- Beginner-friendly setup
+- Easy setup process
 
 ---
 
 # Requirements
 
-Before installing VNSdroid, make sure you have:
+Before using VNSdroid, make sure you have:
 
 - Android device
 - Pydroid 3 installed
@@ -29,7 +28,7 @@ Before installing VNSdroid, make sure you have:
 
 ---
 
-# Installation Guide
+# Installation
 
 ## 1. Install Pydroid 3
 
@@ -37,27 +36,19 @@ Download **Pydroid 3** from the Play Store.
 
 ---
 
-## 2. Create install.py
+## 2. Download VNSdroid
 
-1. Open Pydroid 3
-2. Press the folder icon
-3. Click **Save As**
-4. Choose internal storage
-5. Create a folder
-6. Create a file named:
+Go to the **Releases** section of this repository and download the latest VNSdroid `.zip` file.
 
-```py
-install.py
-```
-
-7. Paste the installer code into it from install.py inside repository
-8. Save the file
+Extract the zip anywhere in your internal storage.
 
 ---
 
 ## 3. Install Kivy
 
-Open the Pydroid 3 sidebar → Terminal
+Open Pydroid 3.
+
+Open the sidebar → Terminal
 
 Run:
 
@@ -69,36 +60,19 @@ Wait for installation to finish.
 
 ---
 
-## 4. Run Installer
+## 4. Launch VNSdroid
 
-1. Open `install.py`
-2. Press Run
-3. Select your VNSdroid version
-4. Wait until installation completes
-
-After installation, a new folder named:
+Inside the extracted VNSdroid folder, open:
 
 ```text
-VNSdroid
-```
-
-will appear in the same directory.
-
----
-
-## 5. Launch VNSdroid
-
-Open:
-
-```text
-VNSdroid/main.py
+main.py
 ```
 
 Run `main.py` using Pydroid 3.
 
 ---
 
-# Example Game Structure
+# Game Structure Example
 
 ```text
 games/
@@ -116,9 +90,9 @@ games/
 
 # Notes
 
-- More help can be found in the Settings page
-- Some games may require properly formatted VNDS files
-- Performance depends on your device
+- More help can be found inside the Settings page
+- Some games may require properly formatted VNDS assets
+- Performance may vary depending on your device
 
 ---
 
@@ -132,5 +106,5 @@ Built using Python and Kivy.
 
 # Copyright
 
-Copyright © 2026 stella684
+Copyright © 2026 stella684  
 All rights reserved.
