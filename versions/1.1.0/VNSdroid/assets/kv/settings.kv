@@ -1,0 +1,297 @@
+<SettingsMenu>:
+    orientation: 'vertical'
+    canvas.before:
+        Color:
+            rgba: 0, 0, 0, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: None
+        height: '60dp'
+        padding: '10dp'
+        spacing: '10dp'
+        canvas.before:
+            Color:
+                rgba: 0.08, 0.08, 0.08, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        
+        Image:
+            source: './assets/icon.png'
+            size_hint_x: None
+            width: '40dp'
+            allow_stretch: True
+            keep_ratio: True
+        
+        Label:
+            text: "VNSdroid"
+            font_size: '24sp'
+            bold: True
+            size_hint_x: None
+            width: self.texture_size[0]
+            text_size: None, self.height
+            halign: 'left'
+            valign: 'bottom'
+            padding_y: '8dp'
+            color: 1, 1, 1, 1
+
+        Label:
+            text: root.app_version
+            font_size: '14sp'
+            color: 0.5, 0.5, 0.5, 1
+            size_hint_x: 1
+            text_size: self.size
+            halign: 'left'
+            valign: 'bottom'
+            padding_y: '8dp'
+
+    FloatLayout:
+        size_hint: 1, 1
+
+        ScrollView:
+            do_scroll_x: False
+            do_scroll_y: True
+            pos_hint: {'x': 0, 'y': 0}
+            size_hint: 1, 1
+            
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                padding: '20dp'
+                spacing: '15dp'
+
+                Label:
+                    text: "Gameplay"
+                    font_name: './assets/jpfont.ttf'
+                    font_size: '20sp'
+                    bold: True
+                    color: 1, 1, 1, 1
+                    size_hint_y: None
+                    height: '35dp'
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                
+                BoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: '45dp'
+                    spacing: '10dp'
+                    Label:
+                        text: "Auto"
+                        font_name: './assets/jpfont.ttf'
+                        font_size: '16sp'
+                        size_hint_x: 0.5
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                        color: 0.8, 0.8, 0.8, 1
+                    
+                    BoxLayout:
+                        orientation: 'horizontal'
+                        size_hint_x: 0.5
+                        spacing: '5dp'
+                        TextInput:
+                            text: str(root.auto_speed)
+                            font_name: './assets/jpfont.ttf'
+                            input_filter: 'float'
+                            multiline: False
+                            size_hint_x: 0.5
+                            background_color: 0.1, 0.1, 0.1, 1
+                            foreground_color: 1, 1, 1, 1
+                            halign: 'center'
+                            padding: [0, (self.height - self.line_height) / 2, 0, 0]
+                            on_text: root.update_auto_speed(self.text)
+                        Label:
+                            text: "seconds"
+                            font_name: './assets/jpfont.ttf'
+                            font_size: '14sp'
+                            size_hint_x: 0.5
+                            halign: 'left'
+                            valign: 'middle'
+                            text_size: self.size
+                            color: 0.6, 0.6, 0.6, 1
+
+                BoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: '45dp'
+                    spacing: '10dp'
+                    Label:
+                        text: "Screen"
+                        font_name: './assets/jpfont.ttf'
+                        font_size: '16sp'
+                        size_hint_x: 0.5
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                        color: 0.8, 0.8, 0.8, 1
+                    Button:
+                        text: root.display_mode
+                        font_name: './assets/jpfont.ttf'
+                        size_hint_x: 0.5
+                        background_normal: ''
+                        background_color: 0.1, 0.1, 0.1, 1
+                        color: 1, 1, 1, 1
+                        on_release: root.toggle_display_mode()
+
+                Widget:
+                    size_hint_y: None
+                    height: '10dp'
+
+   
+                Label:
+                    text: "Audio"
+                    font_name: './assets/jpfont.ttf'
+                    font_size: '20sp'
+                    bold: True
+                    color: 1, 1, 1, 1
+                    size_hint_y: None
+                    height: '35dp'
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+
+                BoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: '45dp'
+                    spacing: '10dp'
+                    Label:
+                        text: "Master Volume"
+                        font_name: './assets/jpfont.ttf'
+                        font_size: '16sp'
+                        size_hint_x: 0.4
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                    Slider:
+                        min: 0.0
+                        max: 1.0
+                        value: root.master_vol
+                        size_hint_x: 0.6
+                        on_value: root.update_volume('master', self.value)
+
+                BoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: '45dp'
+                    spacing: '10dp'
+                    Label:
+                        text: "BGM Volume"
+                        font_name: './assets/jpfont.ttf'
+                        font_size: '16sp'
+                        size_hint_x: 0.4
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                    Slider:
+                        min: 0.0
+                        max: 1.0
+                        value: root.bgm_vol
+                        size_hint_x: 0.6
+                        on_value: root.update_volume('bgm', self.value)
+
+                BoxLayout:
+                    orientation: 'horizontal'
+                    size_hint_y: None
+                    height: '45dp'
+                    spacing: '10dp'
+                    Label:
+                        text: "SFX Volume"
+                        font_name: './assets/jpfont.ttf'
+                        font_size: '16sp'
+                        size_hint_x: 0.4
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                    Slider:
+                        min: 0.0
+                        max: 1.0
+                        value: root.sfx_vol
+                        size_hint_x: 0.6
+                        on_value: root.update_volume('sfx', self.value)
+
+                Widget:
+                    size_hint_y: None
+                    height: '10dp'
+
+                Label:
+                    text: "Helps"
+                    font_name: './assets/jpfont.ttf'
+                    font_size: '20sp'
+                    bold: True
+                    color: 1, 1, 1, 1
+                    size_hint_y: None
+                    height: '35dp'
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                Button:
+                    text: "Open Help Guide"
+                    font_name: './assets/jpfont.ttf'
+                    size_hint_y: None
+                    height: '45dp'
+                    background_normal: ''
+                    background_color: 0.1, 0.1, 0.1, 1
+                    color: 1, 1, 1, 1
+                    on_release: root.open_text_popup("Help", "help.txt")
+
+                Widget:
+                    size_hint_y: None
+                    height: '10dp'
+
+                Label:
+                    text: "About Me"
+                    font_name: './assets/jpfont.ttf'
+                    font_size: '20sp'
+                    bold: True
+                    color: 1, 1, 1, 1
+                    size_hint_y: None
+                    height: '35dp'
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                Button:
+                    text: "Open Creator Details"
+                    font_name: './assets/jpfont.ttf'
+                    size_hint_y: None
+                    height: '45dp'
+                    background_normal: ''
+                    background_color: 0.1, 0.1, 0.1, 1
+                    color: 1, 1, 1, 1
+                    on_release: root.open_text_popup("About Me", "aboutme.txt")
+
+
+    BoxLayout:
+        size_hint_y: None
+        height: '55dp'
+        spacing: '2dp'
+        canvas.before:
+            Color:
+                rgba: 0.05, 0.05, 0.05, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Button:
+            text: "Home"
+            font_name: './assets/jpfont.ttf'
+            font_size: '16sp'
+            background_normal: ''
+            background_color: 0.08, 0.08, 0.08, 1
+            color: 1, 1, 1, 1
+            on_release: root.go_home()
+
+        Button:
+            text: "Settings"
+            font_name: './assets/jpfont.ttf'
+            font_size: '16sp'
+            background_normal: ''
+            background_color: 0.08, 0.08, 0.08, 1
+            color: 1, 1, 1, 1
