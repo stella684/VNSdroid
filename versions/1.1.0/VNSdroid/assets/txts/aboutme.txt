@@ -1,0 +1,13 @@
+This is a VNS interpreter for DS-port visual novels.
+
+I started this project because I wanted to play a visual novel I liked, but I couldn’t install any existing interpreters due to Android version compatibility issues.
+
+The goal of this project isn’t just to help myself, it’s for anyone struggling to run DS-port VNs on modern Android devices. A lot of older interpreters no longer work properly, are difficult to install, or simply crash on newer systems, so I decided to build an alternative that’s easier and more accessible.
+
+This is also the first project where I genuinely put a lot of effort into both functionality and user experience, so seeing other people use it to enjoy the visual novels they love would honestly make me really happy.
+
+The interpreter is designed to support the original VNS file structure and scripting system while keeping everything lightweight and mobile-friendly. My main focus is compatibility, simplicity, and making DS-port VNs easier to preserve and play on current devices. 
+
+Anyway, if you’d like to join my Discord community for DS-port visual novels, development updates, testing, or other projects, feel free to join https://discord.gg/AdTcQFk8gZ or contact stella684 on Discord.
+
+discord: stella684, github: stella684
