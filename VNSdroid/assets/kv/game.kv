@@ -1,5 +1,4 @@
 <VNInterpreter>:
-
     canvas.after:
         Color:
             rgba: 0, 0, 0, root.transition_opacity
@@ -38,7 +37,6 @@
                     id: sprite_layer
                     size_hint: 1, 1
 
-                # --- BUILT-IN DEFAULT UI ---
                 FloatLayout:
                     id: default_ui_layer
                     opacity: root.ui_opacity
@@ -59,7 +57,6 @@
                                 pos: self.pos
                                 size: self.size
                             
-                        # Spacers to center the buttons
                         Widget:
                             size_hint_x: 1
                             
@@ -127,45 +124,44 @@
                             color: 0.9, 0.4, 0.4, 1
                             on_release: root.exit_to_menu()
                              
-                        # Spacers to center the buttons
                         Widget:
                             size_hint_x: 1
 
                     BoxLayout:
                         orientation: 'vertical'
                         size_hint: 0.94, None
-                        height: '115dp'
+                        height: self.minimum_height 
                         pos_hint: {'center_x': 0.5, 'y': 0.04}
-                        spacing: '2dp'
+                        spacing: '0dp'
                         opacity: 1 if root.dialogue_text else 0
 
                         BoxLayout:
-                            size_hint: None, None
-                            size: '140dp', '28dp'
-                            opacity: 1 if root.char_name.strip() else 0
+                            size_hint: (None, None)
+                            width: '140dp' if root.char_name != '' else '0dp'
+                            height: '28dp' if root.char_name != '' else '0dp'
+                            opacity: 1 if root.char_name != '' else 0
+                            
+                            Label:
+                                text: root.char_name
+                                font_size: '15sp' if root.char_name != '' else 0
+                                font_name: './assets/jpfont.ttf'
+                                bold: True
+                                halign: 'left'
+                                padding_x: '12dp'
+                                valign: 'middle'
+                                text_size: self.size
+                                color: 0.98, 0.95, 0.85, 1
+                                outline_color: 0, 0, 0, 1
+                                outline_width: 3
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: '85dp'
+                            padding: ['15dp', '10dp', '15dp', '10dp']
                             
                             canvas.before:
                                 Color:
-                                    rgba: 0.08, 0.08, 0.09, 1
-                                Rectangle:
-                                    pos: self.pos
-                                    size: self.size
-                                    
-                            Label:
-                                text: root.char_name
-                                font_size: '15sp'
-                                font_name: './assets/jpfont.ttf'
-                                bold: True
-                                halign: 'center'
-                                valign: 'middle'
-                                text_size: self.size
-                                color: 1, 0.85, 0.4, 1
-
-                        BoxLayout:
-                            padding: ['15dp', '10dp', '15dp', '10dp']
-                            canvas.before:
-                                Color:
-                                    rgba: 0.08, 0.08, 0.09, 0.92
+                                    rgba: 0.08, 0.08, 0.09, 0.8
                                 Rectangle:
                                     pos: self.pos
                                     size: self.size
@@ -211,7 +207,6 @@
                 FloatLayout:
                     id: custom_ui_layer
                     size_hint: 1, 1
-
 
         Button:
             background_color: 0, 0, 0, 0
