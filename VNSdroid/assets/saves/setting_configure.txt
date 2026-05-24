@@ -1,0 +1,5 @@
+auto_speed=5.0
+display_mode=Fixed
+master_vol=1.0
+bgm_vol=1.0
+sfx_vol=0.9999999999999999
