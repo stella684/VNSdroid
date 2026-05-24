@@ -115,38 +115,29 @@ class VNInterpreter(BoxLayout):
                 categories.append(prefix)
                 
         for cat in categories:
-            # 1. Normal unpacked folder
             normal_path = os.path.join(self.current_game_folder, cat, filename)
             if os.path.exists(normal_path): 
                 return normal_path
                 
-            # 2. Check matching zip file
             zip_path = os.path.join(self.current_game_folder, f"{cat}.zip")
             if os.path.exists(zip_path):
                 cache_dir = os.path.join(self.current_game_folder, '.cache', cat)
                 try:
                     with zipfile.ZipFile(zip_path, 'r') as z:
-                        # Clean and split requested target path into lowercase components
                         target_components = [p.lower() for p in target_path.strip('/').split('/')]
                         
                         for info in z.infolist():
-                            # Skip directory markers or empty files
                             if info.filename.endswith('/') or info.file_size == 0:
                                 continue
                                 
-                            # Normalize zip entry separators and split into lowercase parts
                             normalized_info = info.filename.replace('\\', '/').strip('/')
                             info_components = [p.lower() for p in normalized_info.split('/')]
                             
-                            # Safely check if the END of the zip path perfectly matches the target components
                             if len(info_components) >= len(target_components):
                                 if info_components[-len(target_components):] == target_components:
-                                    
-                                    # Create cache file structure cleanly based on actual zip contents
                                     safe_cache_path = info.filename.replace('/', os.sep)
                                     cached_file = os.path.join(cache_dir, safe_cache_path)
                                     
-                                    # Extract if missing or corrupted (0 bytes)
                                     if not os.path.exists(cached_file) or os.path.getsize(cached_file) == 0:
                                         os.makedirs(os.path.dirname(cached_file), exist_ok=True)
                                         with z.open(info) as source, open(cached_file, 'wb') as target:
@@ -155,7 +146,6 @@ class VNInterpreter(BoxLayout):
                 except Exception as e:
                     Logger.error(f"Interpreter: Zip extraction error: {e}")
 
-        # 3. Fallback to base folder
         fallback = os.path.join(self.current_game_folder, filename)
         if os.path.exists(fallback): return fallback
         
@@ -267,7 +257,8 @@ class VNInterpreter(BoxLayout):
     def handle_text(self, raw_text):
         text = raw_text.strip().strip('"').strip()
         
-        if text in ["~", "!"]: self.char_name, self.full_text = "", ""
+        if text in ["~", "!"]: 
+            self.char_name, self.full_text = "", ""
         elif text == "@":
             self.char_name = ""
             self.run_next_command()
@@ -281,7 +272,9 @@ class VNInterpreter(BoxLayout):
                 else:
                     self.run_next_command()
                     return
-            else: self.full_text = text
+            else: 
+                self.char_name = ""
+                self.full_text = text
         elif text.startswith("@"): 
             space_idx = text.find(" ")
             if space_idx != -1:
@@ -294,14 +287,15 @@ class VNInterpreter(BoxLayout):
         elif ":" in text and not text.startswith("http"):
             name, speech = text.split(":", 1)
             self.char_name, self.full_text = name.strip(), speech.strip()
-        else: self.full_text = text
+        else: 
+            self.full_text = text
 
         self.dialogue_text = ""
         self.type_index = 0
         if self.typewriter_event: self.typewriter_event.cancel()
 
         if self.full_text and text not in ["~", "!"]:
-            formatted_name = f"[b][color=F2D966]{self.char_name}[/color][/b]\n" if self.char_name.strip() else ""
+            formatted_name = f"[b][color=F2D966]{self.char_name}[/color][/b]\n" if self.char_name != "" else ""
             self.dialogue_history.append(formatted_name + self.full_text)
             self.typewriter_event = Clock.schedule_interval(self._type_next_char, 0.02)
         else:
@@ -412,7 +406,6 @@ class VNInterpreter(BoxLayout):
             self.choices = [choice.strip() for choice in args.split('|')]
         else:
             self.choices = []
-            Logger.warning("Interpreter: Choice command triggered but no options were found.")
         self.is_choosing = True
 
     def select_choice(self, val):
