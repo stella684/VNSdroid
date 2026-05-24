@@ -1,7 +1,0 @@
-How to Import Games : To import visual novels into this interpreter, the game must be a Nintendo Switch DS Port version.If your game is in a .zip file (for example: gamename.zip), extract it into a normal folder like this : " gamename/ " Inside the folder, you may see folders such as : " background,foreground,script,sound " Keep these folders compressed as .zip files whenever possible.
-
-If they are already extracted, compress them back into ZIP format manually.This helps prevent thousands of images and audio files from flooding your gallery, music player, or file scanner.After setting up the files correctly, launch main.py.The interpreter will automatically detect available VNs and show them in the menu.Simply click the VN you want to play and enjoy.
-
-Settings → Auto : This feature allows you to customize Auto Play speed while reading visual novels.The number you enter represents the delay in seconds between each dialogue line.Example: 5, If Auto Play is enabled and the value is set to 5, the interpreter will automatically advance to the next line every 5 seconds.This is useful if you prefer a hands-free reading experience.
-
-Settings → Screen : This feature allows you to switch between : • Fixed Screen Mode,• Full Screen Mode,You can use whichever mode feels more comfortable for your device and gameplay experience.
