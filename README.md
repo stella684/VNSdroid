@@ -1,110 +1,38 @@
 # VNSdroid
 
-VNSdroid is a Visual Novel interpreter project created by **stella684**.
+VNSdroid is a lightweight, Python and Kivy-based VNDS (Visual Novel Script) interpreter optimized specifically for Android devices. 
 
-It allows you to run **Nintendo DS Visual Novel ports** on modern Android devices using Python and Kivy.
-
-This project was created because many older VNDS interpreters no longer work properly on newer phones.
+The project addresses modern mobile hardware requirements, allowing legacy Nintendo DS visual novel ports to run smoothly on newer Android versions where older or unmaintained VNDS interpreters fail due to target API compatibility issues.
 
 ---
 
-# Features
+## Technical Features
 
-- Run VNDS/Nintendo DS visual novels on Android
-- Modern device support
-- Lightweight and simple UI
-- Built with Python + Kivy
-- Easy setup process
-
----
-
-# Requirements
-
-Before using VNSdroid, make sure you have:
-
-- Android device
-- Pydroid 3 installed
-- Internet connection
+* **Dynamic Device Orientation Control:** Automatially forces Portrait mode for navigating game lists and system settings, and locks into Landscape mode seamlessly upon executing game scripts.
+* **State Persistence Management:** Built-in multi-slot Save/Load mechanism tracking script execution pointers, variable states, audio triggers, and local visual assets.
+* **Resource Optimization:** Clean, decoupled design utilizing Kivy's asynchronous property binding for lightweight resource overhead and efficient touch scaling.
+* **Directory Fallback Structure:** Handles standard path verification and localized parsing for game assets, with case-insensitivity safeguards built for mobile directory layouts.
 
 ---
 
-# Installation
+## Prerequisites
 
-## 1. Install Pydroid 3
-
-Download **Pydroid 3** from the Play Store.
-
----
-
-## 2. Download VNSdroid
-
-Go to the **Releases** section of this repository and download the latest VNSdroid `.zip` file.
-
-Extract the zip anywhere in your internal storage.
+To install and run this environment locally on a mobile device, ensure you have:
+* An Android hardware platform.
+* The **Pydroid 3** IDE app wrapper installed from the Google Play Store.
+* An active network connection during initial provisioning to pull down dependency requirements.
 
 ---
 
-## 3. Install Kivy
+## Installation & Launch Sequence
 
-Open Pydroid 3.
+### 1. Initialize Pydroid 3
+Install and launch **Pydroid 3** on your target device.
 
-Open the sidebar → Terminal
+### 2. Extract Project Source
+Download the latest compressed build asset (`VNSdroid.zip`) from the Releases tab and extract its directory contents into an accessible internal storage path.
 
-Run:
-
+### 3. Build Dependencies
+Launch the Pydroid 3 side-drawer menu, select the native terminal emulator window, and install the required UI layout framework via pip:
 ```bash
-pip install kivy
-```
-
-Wait for installation to finish.
-
----
-
-## 4. Launch VNSdroid
-
-Inside the extracted folder, then open the VNSdroid folder and open:
-
-```text
-main.py
-```
-
-Run `main.py` using Pydroid 3.
-
----
-
-# Game Structure Example
-
-```text
-games/
-└── gamename/
-    ├── background.zip
-    ├── foreground.zip
-    ├── sound.zip
-    └── script.zip/
-        ├── main.scr
-        ├── endings.scr
-        └── debug.scr
-```
-
----
-
-# Notes
-
-- More help can be found inside the Settings page
-- Some games may require properly formatted VNDS assets
-- Performance may vary depending on your device
-
----
-
-# Credits
-
-Created by **stella684**
-
-Built using Python and Kivy.
-
----
-
-# Copyright
-
-Copyright © 2026 stella684  
-All rights reserved.
+ pip install kivy
