@@ -1,26 +1,20 @@
 import os
-import json
+import re
 import zipfile
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.image import Image as KivyImage
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
-from kivy.uix.scrollview import ScrollView
-from kivy.uix.slider import Slider
-from kivy.uix.textinput import TextInput
-from kivy.uix.widget import Widget
 from kivy.app import App
 from kivy.properties import StringProperty, BooleanProperty, ListProperty, NumericProperty
 from kivy.logger import Logger
 from kivy.core.audio import SoundLoader
 from kivy.clock import Clock
 from kivy.core.window import Window
-from kivy.lang import Builder
-from kivy.animation import Animation
 
 from modules.saveload import SaveLoadPopup
-from modules.script_engine import ScriptEngine 
 
 class VNInterpreter(BoxLayout):
     current_game_folder = StringProperty("")
@@ -30,43 +24,31 @@ class VNInterpreter(BoxLayout):
     
     is_choosing = BooleanProperty(False)
     choices = ListProperty([])
-    
     auto_mode = BooleanProperty(False)
-    ui_hidden = BooleanProperty(False)
     
     auto_speed = NumericProperty(2.0)
     bg_keep_ratio = BooleanProperty(True)
-    
-    master_vol = NumericProperty(1.0)
-    bgm_vol = NumericProperty(1.0)
-    sfx_vol = NumericProperty(1.0)
-    
-    ui_opacity = NumericProperty(1.0)
     transition_opacity = NumericProperty(0.0)
+    ui_hidden = BooleanProperty(False)
+    ui_opacity = NumericProperty(1.0)
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.engine = ScriptEngine() 
+        self.script_lines = []
+        self.current_line_idx = 0
+        self.current_script_name = "main.scr"
+        self.variables = {"selected": 0}
         self.current_music = None
         self.current_sound = None
         self.auto_event = None
         self.current_bg_name = ""
-        self.dialogue_history = [] 
-        
-        self.active_sprites = {} 
-        self.active_sprite_files = {} 
-        
-        self.typewriter_event = None
-        self.full_text = ""
-        self.type_index = 0
+        # label name -> line index map, rebuilt whenever a script is loaded
+        self._labels = {}
 
     def load_settings(self):
         config_file = './assets/saves/setting_configure.txt'
         self.auto_speed = 2.0
         self.bg_keep_ratio = True
-        self.master_vol = 1.0
-        self.bgm_vol = 1.0
-        self.sfx_vol = 1.0
         
         if os.path.exists(config_file):
             try:
@@ -74,374 +56,374 @@ class VNInterpreter(BoxLayout):
                     for line in f:
                         if '=' in line:
                             key, val = line.strip().split('=', 1)
-                            if key == 'auto_speed': self.auto_speed = float(val)
-                            elif key == 'display_mode': self.bg_keep_ratio = (val == "Fixed")
-                            elif key == 'master_vol': self.master_vol = float(val)
-                            elif key == 'bgm_vol': self.bgm_vol = float(val)
-                            elif key == 'sfx_vol': self.sfx_vol = float(val)
+                            if key == 'auto_speed':
+                                self.auto_speed = float(val)
+                            elif key == 'display_mode':
+                                self.bg_keep_ratio = (val == "Fixed")
             except Exception as e:
                 Logger.error(f"Interpreter: Settings file reading issue: {e}")
 
-    def _apply_custom_ui(self):
-        if 'custom_ui_layer' not in self.ids or 'default_ui_layer' not in self.ids:
-            return
-
-        self.ids.custom_ui_layer.clear_widgets()
-        custom_ui_path = os.path.join(self.current_game_folder, 'ui.kv')
-        
-        if os.path.exists(custom_ui_path):
-            try:
-                Builder.unload_file(custom_ui_path)
-                custom_widget = Builder.load_file(custom_ui_path)
-                self.ids.custom_ui_layer.add_widget(custom_widget)
-                self.ids.default_ui_layer.opacity = 0
-                self.ids.default_ui_layer.disabled = True
-            except Exception as e:
-                self.ids.default_ui_layer.opacity = 1
-                self.ids.default_ui_layer.disabled = False
-        else:
-            self.ids.default_ui_layer.opacity = 1
-            self.ids.default_ui_layer.disabled = False
-
     def get_asset(self, category, filename):
         if filename == "~" or not filename: return ""
-        
-        target_path = filename.replace('\\', '/')
-        categories = [category]
-        
-        if '/' in target_path:
-            prefix = target_path.split('/')[0]
-            if prefix not in categories:
-                categories.append(prefix)
-                
-        for cat in categories:
-            normal_path = os.path.join(self.current_game_folder, cat, filename)
-            if os.path.exists(normal_path): 
-                return normal_path
-                
-            zip_path = os.path.join(self.current_game_folder, f"{cat}.zip")
-            if os.path.exists(zip_path):
-                cache_dir = os.path.join(self.current_game_folder, '.cache', cat)
-                try:
-                    with zipfile.ZipFile(zip_path, 'r') as z:
-                        target_components = [p.lower() for p in target_path.strip('/').split('/')]
-                        
-                        for info in z.infolist():
-                            if info.filename.endswith('/') or info.file_size == 0:
-                                continue
-                                
-                            normalized_info = info.filename.replace('\\', '/').strip('/')
-                            info_components = [p.lower() for p in normalized_info.split('/')]
-                            
-                            if len(info_components) >= len(target_components):
-                                if info_components[-len(target_components):] == target_components:
-                                    safe_cache_path = info.filename.replace('/', os.sep)
-                                    cached_file = os.path.join(cache_dir, safe_cache_path)
-                                    
-                                    if not os.path.exists(cached_file) or os.path.getsize(cached_file) == 0:
-                                        os.makedirs(os.path.dirname(cached_file), exist_ok=True)
-                                        with z.open(info) as source, open(cached_file, 'wb') as target:
-                                            target.write(source.read())
-                                    return cached_file
-                except Exception as e:
-                    Logger.error(f"Interpreter: Zip extraction error: {e}")
+        base = self.current_game_folder
+        basename = os.path.basename(filename)
+        subfolder = filename.split('/')[0] if '/' in filename else None
 
-        fallback = os.path.join(self.current_game_folder, filename)
-        if os.path.exists(fallback): return fallback
-        
+        def find_file_nocase(directory, rel_path):
+            """Walk rel_path components case-insensitively inside directory."""
+            current = directory
+            for part in rel_path.replace('\\', '/').split('/'):
+                if not os.path.isdir(current):
+                    return None
+                try:
+                    entries = os.listdir(current)
+                except Exception:
+                    return None
+                match = next((e for e in entries if e.lower() == part.lower()), None)
+                if not match:
+                    return None
+                current = os.path.join(current, match)
+            return current if os.path.exists(current) else None
+
+        # --- Direct file lookups (case-insensitive) ---
+        if category:
+            p = find_file_nocase(base, f"{category}/{filename}")
+            if p: return p
+        p = find_file_nocase(base, filename)
+        if p: return p
+        if category and subfolder:
+            p = find_file_nocase(base, f"{category}/{basename}")
+            if p: return p
+
+        # --- Zip lookups ---
+        zip_names_to_try = []
+        if category: zip_names_to_try.append(category)
+        if subfolder and subfolder != category: zip_names_to_try.append(subfolder)
+        try:
+            all_zips = [f[:-4] for f in os.listdir(base) if f.endswith('.zip')]
+            for z in all_zips:
+                if z not in zip_names_to_try:
+                    zip_names_to_try.append(z)
+        except Exception: pass
+
+        filename_lower = filename.replace('\\', '/').lower()
+        basename_lower = basename.lower()
+
+        for zip_name in zip_names_to_try:
+            zip_path = os.path.join(base, f"{zip_name}.zip")
+            if not os.path.exists(zip_path): continue
+            safe_rel = filename.replace('/', '_').replace('\\', '_')
+            cache_dir = os.path.join(base, '.cache', zip_name)
+            if not os.path.exists(cache_dir): os.makedirs(cache_dir)
+            cached_file = os.path.join(cache_dir, safe_rel)
+            try:
+                with zipfile.ZipFile(zip_path, 'r') as z:
+                    for info in z.infolist():
+                        if info.filename.endswith('/'): continue
+                        entry_lower = info.filename.replace('\\', '/').lower()
+                        if entry_lower.endswith(filename_lower) or entry_lower.endswith(basename_lower):
+                            if not os.path.exists(cached_file) or os.path.getsize(cached_file) == 0:
+                                with z.open(info) as src, open(cached_file, 'wb') as dst:
+                                    dst.write(src.read())
+                            return cached_file
+            except Exception as e:
+                Logger.error(f"Interpreter: Zip extraction error ({zip_name}.zip): {e}")
+
         return ""
 
     def start_story(self, game_folder_path):
         self.load_settings()
         self.current_game_folder = game_folder_path
-        self._apply_custom_ui()
         
-        self.auto_mode = False
-        self.ui_hidden = False
-        self.ui_opacity = 1.0
-
         if self.auto_event: self.auto_event.cancel()
-        if self.typewriter_event: self.typewriter_event.cancel()
         if self.current_music: self.current_music.stop()
         if self.current_sound: self.current_sound.stop()
-        
         if 'sprite_layer' in self.ids: self.ids.sprite_layer.clear_widgets()
-        self.active_sprites.clear()
-        self.active_sprite_files.clear()
-        
-        self.transition_opacity = 0.0
-        self.engine.variables["voiced"] = 1  
-        self.dialogue_history = []
         
         main_script = self.get_asset('script', 'main.scr') 
         if main_script and os.path.exists(main_script):
-            self.engine.load_script(main_script)
+            self.load_script(main_script)
             self.run_next_command()
         else:
-            s04_script = self.get_asset('script', 's04.scr')
-            if s04_script and os.path.exists(s04_script):
-                self.engine.load_script(s04_script)
-                self.run_next_command()
-            else:
-                self.dialogue_text = f"Error: initial script not found."
+            self.dialogue_text = f"Error: main.scr not found."
+
+    def load_script(self, path):
+        self.current_script_name = os.path.basename(path)
+        try:
+            with open(path, 'r', encoding='utf-8-sig') as f:  # utf-8-sig strips BOM automatically
+                raw = [line.strip() for line in f.readlines()]
+            # Keep non-empty lines; also keep label lines even if only whitespace-adjacent
+            self.script_lines = [l for l in raw if l]
+            self.current_line_idx = 0
+            self._build_label_map()
+        except Exception as e:
+            Logger.error(f"Interpreter Error: {e}")
+
+    # ------------------------------------------------------------------
+    # Label map: scan once after loading so goto/label are O(1)
+    # ------------------------------------------------------------------
+    def _build_label_map(self):
+        self._labels = {}
+        for idx, line in enumerate(self.script_lines):
+            parts = line.split(' ', 1)
+            if parts[0].lower() == 'label' and len(parts) > 1:
+                self._labels[parts[1].strip()] = idx
+
+    # ------------------------------------------------------------------
+    # Variable interpolation: replace {$varname} with current value
+    # ------------------------------------------------------------------
+    def _interpolate(self, text):
+        def replacer(m):
+            key = m.group(1)
+            return str(self.variables.get(key, m.group(0)))
+        return re.sub(r'\{\$(\w+)\}', replacer, text)
+
+    # ------------------------------------------------------------------
+    # Evaluate a simple VNDS condition:  selected <= 3 / selected == 1
+    # ------------------------------------------------------------------
+    def _eval_condition(self, expr):
+        expr = expr.strip()
+        # Support: varname OP value
+        m = re.match(r'(\w+)\s*(==|!=|<=|>=|<|>)\s*(.+)', expr)
+        if m:
+            lhs_name, op, rhs_raw = m.groups()
+            lhs = self.variables.get(lhs_name, 0)
+            try:
+                rhs = float(rhs_raw.strip().strip('"'))
+                lhs = float(lhs)
+            except ValueError:
+                rhs = rhs_raw.strip().strip('"')
+            ops = {'==': lambda a,b: a==b, '!=': lambda a,b: a!=b,
+                   '<=': lambda a,b: a<=b, '>=': lambda a,b: a>=b,
+                   '<':  lambda a,b: a<b,  '>':  lambda a,b: a>b}
+            return ops[op](lhs, rhs)
+        # Bare variable: truthy if non-zero / non-empty
+        val = self.variables.get(expr, 0)
+        try: return float(val) != 0
+        except: return bool(val)
+
+    # ------------------------------------------------------------------
+    # Skip an if-block when condition is false
+    # ------------------------------------------------------------------
+    def _skip_if_block(self):
+        depth = 1
+        while self.current_line_idx < len(self.script_lines):
+            line = self.script_lines[self.current_line_idx]
+            self.current_line_idx += 1
+            cmd = line.split(' ', 1)[0].lower()
+            if cmd == 'if':
+                depth += 1
+            elif cmd == 'fi':
+                depth -= 1
+                if depth == 0:
+                    return
 
     def run_next_command(self):
-        cmd, args = self.engine.get_next_command()
-        
-        if cmd is None: return 
-            
-        if cmd == "text": self.handle_text(args)
+        if self.current_line_idx >= len(self.script_lines): return
+        line = self.script_lines[self.current_line_idx]
+        self.current_line_idx += 1
+        parts = line.split(' ', 1)
+        cmd = parts[0].lower()
+        args = parts[1] if len(parts) > 1 else ""
+
+        # ---- interpolate variable references in args ----
+        args = self._interpolate(args)
+
+        if cmd == "text": 
+            self.handle_text(args)
+            if self.auto_mode: self.trigger_auto()
+
         elif cmd == "cleartext":
-            if self.typewriter_event:
-                self.typewriter_event.cancel()
-                self.typewriter_event = None
-            self.char_name = ""
+            # cleartext clears dialogue; argument '!' also clears char name
             self.dialogue_text = ""
+            self.char_name = ""
             self.run_next_command()
-        elif cmd == "if":
-            if not self.engine.evaluate_condition(args):
-                while True:
-                    next_cmd, _ = self.engine.get_next_command()
-                    if next_cmd == "fi" or next_cmd is None: break
-            self.run_next_command()
-        elif cmd == "fi": self.run_next_command()
+
         elif cmd in ["bgload", "bg_load"]:
-            clean_args = args.split()[0] if args else ""
-            anim = Animation(transition_opacity=1.0, duration=0.3)
-            anim.bind(on_complete=lambda *x: self._finish_bgload(clean_args))
-            anim.start(self)
-        elif cmd == "setimg": self.handle_setimg(args)
+            if 'sprite_layer' in self.ids: self.ids.sprite_layer.clear_widgets()
+            bg_args = args.split()
+            bg_file = bg_args[0] if bg_args else args
+            if bg_file and bg_file != "~":
+                self.current_bg_name = bg_file
+                resolved = self.get_asset('background', bg_file)
+                if not resolved:
+                    resolved = self.get_asset('', bg_file)
+                self.bg_source = resolved if resolved else ""
+            self.run_next_command()
+
+        elif cmd == "setimg": 
+            self.handle_setimg(args)
+
         elif cmd == "delay":
             try:
                 p = int(args) / 1000.0 
                 Clock.schedule_once(lambda dt: self.run_next_command(), p)
             except: self.run_next_command()
-        elif cmd in ["setvar", "gsetvar"]:
-            self.engine.handle_variable_assignment(args)
-            self.run_next_command()
-        elif cmd == "label": self.run_next_command()
-        elif cmd == "goto":
-            if args: self.engine.local_goto(args)
-            self.run_next_command()
+
         elif cmd == "music":
             self.play_audio(args, True)
             self.run_next_command()
+
         elif cmd == "sound":
             self.play_audio(args, False)
             self.run_next_command()
+
         elif cmd == "choice": 
             self.handle_choice(args)
             if self.auto_event: self.auto_event.cancel()
-        elif cmd == "jump":
-            jump_parts = args.split()
-            if jump_parts:
-                new_path = self.get_asset('script', jump_parts[0])
-                if new_path:
-                    self.engine.load_script(new_path)
-                    if len(jump_parts) > 1: self.engine.local_goto(jump_parts[1])
-            self.run_next_command()
-        else: self.run_next_command()
 
-    def _finish_bgload(self, clean_args):
-        if 'sprite_layer' in self.ids: self.ids.sprite_layer.clear_widgets()
-        self.active_sprites.clear()
-        self.active_sprite_files.clear()
-        
-        self.current_bg_name = clean_args
-        self.bg_source = self.get_asset('background', clean_args)
-        
-        anim = Animation(transition_opacity=0.0, duration=0.3)
-        anim.bind(on_complete=lambda *x: self.run_next_command())
-        anim.start(self)
+        elif cmd == "jump":
+            new_path = self.get_asset('script', args)
+            if new_path: self.load_script(new_path)
+            self.run_next_command()
+
+        elif cmd == "label":
+            # label declarations are skipped at runtime; they're indexed at load time
+            self.run_next_command()
+
+        elif cmd == "goto":
+            target = args.strip()
+            if target in self._labels:
+                self.current_line_idx = self._labels[target]
+                self.run_next_command()
+            else:
+                Logger.error(f"Interpreter: goto target '{target}' not found")
+
+        elif cmd == "if":
+            condition = args.strip()
+            if self._eval_condition(condition):
+                self.run_next_command()  # execute the block
+            else:
+                self._skip_if_block()
+                self.run_next_command()  # continue after fi
+
+        elif cmd == "fi":
+            # end of an if block we were executing; just continue
+            self.run_next_command()
+
+        elif cmd == "setvar":
+            self.handle_setvar(args)
+            self.run_next_command()
+
+        else:
+            self.run_next_command()
+
+    # ------------------------------------------------------------------
+    # setvar handler
+    #
+    # VNDS setvar syntax variants:
+    #   setvar varname = value      (assignment)
+    #   setvar varname + value      (add)
+    #   setvar varname - value      (subtract)
+    #   setvar varname * value      (multiply)
+    #   setvar varname / value      (divide)
+    #   setvar ~ ~                  (no-op / reset placeholder — ignore)
+    # ------------------------------------------------------------------
+    def handle_setvar(self, args):
+        args = args.strip()
+        if args == "~ ~" or args == "~":
+            return
+
+        m = re.match(r'(\w+)\s*([=+\-*/])\s*(.+)', args)
+        if not m:
+            Logger.warning(f"Interpreter: unrecognised setvar syntax: {args}")
+            return
+
+        varname, op, raw_val = m.groups()
+        raw_val = raw_val.strip().strip('"')
+
+        # Value may itself be a variable name
+        if raw_val in self.variables:
+            value = self.variables[raw_val]
+        else:
+            try:
+                value = float(raw_val) if '.' in raw_val else int(raw_val)
+            except ValueError:
+                value = raw_val  # string value
+
+        current = self.variables.get(varname, 0)
+
+        if op == '=':
+            self.variables[varname] = value
+        elif op == '+':
+            try: self.variables[varname] = float(current) + float(value)
+            except: self.variables[varname] = str(current) + str(value)
+        elif op == '-':
+            try: self.variables[varname] = float(current) - float(value)
+            except: self.variables[varname] = current
+        elif op == '*':
+            try: self.variables[varname] = float(current) * float(value)
+            except: self.variables[varname] = current
+        elif op == '/':
+            try: self.variables[varname] = float(current) / float(value)
+            except ZeroDivisionError: self.variables[varname] = 0
+
+        # Keep integer-looking floats as ints for cleaner interpolation
+        v = self.variables[varname]
+        if isinstance(v, float) and v == int(v):
+            self.variables[varname] = int(v)
 
     def handle_text(self, raw_text):
         text = raw_text.strip().strip('"').strip()
-        
-        if text in ["~", "!"]: 
-            self.char_name, self.full_text = "", ""
-        elif text == "@":
-            self.char_name = ""
-            self.run_next_command()
-            return
-        elif text.startswith("@---"):
-            end_idx = text.find("---", 4)
-            if end_idx != -1:
-                self.char_name = text[4:end_idx].strip()
-                remaining = text[end_idx+3:].strip()
-                if remaining: self.full_text = remaining
-                else:
-                    self.run_next_command()
-                    return
-            else: 
-                self.char_name = ""
-                self.full_text = text
-        elif text.startswith("@"): 
-            space_idx = text.find(" ")
-            if space_idx != -1:
-                self.char_name = text[1:space_idx].strip()
-                self.full_text = text[space_idx+1:].strip()
-            else:
-                self.char_name = text[1:].strip()
-                self.run_next_command()
-                return
-        elif ":" in text and not text.startswith("http"):
+        if text in ["~", "!", ""]:
+            self.char_name, self.dialogue_text = "", ""
+        elif text.startswith("@"):
+            self.char_name, self.dialogue_text = " ", text[1:]
+        elif ":" in text:
             name, speech = text.split(":", 1)
-            self.char_name, self.full_text = name.strip(), speech.strip()
-        else: 
-            self.full_text = text
-
-        self.dialogue_text = ""
-        self.type_index = 0
-        if self.typewriter_event: self.typewriter_event.cancel()
-
-        if self.full_text and text not in ["~", "!"]:
-            formatted_name = f"[b][color=F2D966]{self.char_name}[/color][/b]\n" if self.char_name != "" else ""
-            self.dialogue_history.append(formatted_name + self.full_text)
-            self.typewriter_event = Clock.schedule_interval(self._type_next_char, 0.02)
+            self.char_name, self.dialogue_text = name.strip(), speech.strip()
         else:
-            self.dialogue_text = self.full_text
-            self.run_next_command()
-
-    def _type_next_char(self, dt):
-        if self.type_index < len(self.full_text):
-            char = self.full_text[self.type_index]
-            self.dialogue_text += char
-            self.type_index += 1
-            if char == '[':
-                while self.type_index < len(self.full_text) and self.full_text[self.type_index-1] != ']':
-                    self.dialogue_text += self.full_text[self.type_index]
-                    self.type_index += 1
-        else:
-            if self.typewriter_event:
-                self.typewriter_event.cancel()
-                self.typewriter_event = None
-            if self.auto_mode: self.trigger_auto()
+            self.char_name, self.dialogue_text = "", text
 
     def handle_setimg(self, args):
-        if 'sprite_layer' not in self.ids: 
-            self.run_next_command()
-            return
-            
-        args_strip = args.strip()
-        if args_strip == "~":
-            self.ids.sprite_layer.clear_widgets()
-            self.active_sprites.clear()
-            self.active_sprite_files.clear()
-            self.run_next_command()
-            return
-            
-        p = args.split()
-        filename = p[0]
-        is_ui_element = filename.startswith("Date/") or filename.startswith("Location/")
-        filepath = self.get_asset('foreground', filename)
-        
-        if filepath and os.path.exists(filepath):
-            img = KivyImage(source=filepath, allow_stretch=True, keep_ratio=True)
-            if is_ui_element:
-                img.size_hint = (None, None)
-                img.bind(texture_size=img.setter('size'))
-                if len(p) >= 3:
-                    try:
-                        x = float(p[1])
-                        y = float(p[2])
-                        img.pos = (x, y)
-                    except ValueError: pass
-                img.opacity = 1
-                self.ids.sprite_layer.add_widget(img)
-            else:
-                current_count = len(self.active_sprites)
-                if current_count == 0: pos_mode = 'center'
-                elif current_count == 1:
-                    pos_mode = 'right'
-                    existing_sprite = list(self.active_sprites.values())[0]
-                    existing_sprite.pos_hint = {'x': 0.05, 'y': 0.0}
-                    existing_filename = list(self.active_sprite_files.keys())[0]
-                    self.active_sprite_files[existing_filename] = 'left'
-                else: pos_mode = 'center' 
-                
-                img.size_hint = (None, 0.95)
-                img.opacity = 0 
-                
-                def scale_img(instance, *args_list):
-                    if instance.texture_size and instance.texture_size[1] > 0: 
-                        instance.width = instance.height * (instance.texture_size[0] / instance.texture_size[1])
-                img.bind(height=scale_img, texture_size=scale_img)
-           
-                if pos_mode == 'left': img.pos_hint = {'x': 0.05, 'y': 0.0}
-                elif pos_mode == 'right': img.pos_hint = {'right': 0.95, 'y': 0.0}
-                else: img.pos_hint = {'center_x': 0.5, 'y': 0.0}
-                    
-                self.ids.sprite_layer.add_widget(img)
-                self.active_sprites[filename] = img
-                self.active_sprite_files[filename] = pos_mode
-
-                anim = Animation(opacity=1.0, duration=0.4)
-                anim.start(img)
-            
+        if args != "~" and 'sprite_layer' in self.ids:
+            p = args.split()
+            if len(p) >= 1:
+                filepath = self.get_asset('foreground', p[0])
+                if filepath and os.path.exists(filepath):
+                    img = KivyImage(source=filepath, allow_stretch=True, keep_ratio=True)
+                    img.size_hint = (None, 0.95) 
+                    def scale_img(instance, *args_list):
+                        if instance.texture_size[1] > 0:
+                            instance.width = instance.height * (instance.texture_size[0] / instance.texture_size[1])
+                    img.bind(height=scale_img, texture_size=scale_img)
+                    if len(p) >= 3:
+                        x_coord = float(p[1])
+                        if x_coord < 400:
+                            img.pos_hint = {'x': 0.05, 'y': 0.0}
+                            img.color = [1, 1, 1, 1]
+                        else:
+                            img.pos_hint = {'right': 0.95, 'y': 0.0}
+                            img.color = [1, 1, 1, 0.6]
+                    self.ids.sprite_layer.add_widget(img)
         self.run_next_command()
 
-    def restore_sprite(self, filename, pos_mode):
-        filepath = self.get_asset('foreground', filename)
-        if filepath and os.path.exists(filepath):
-            img = KivyImage(source=filepath, allow_stretch=True, keep_ratio=True)
-            img.size_hint = (None, 0.95)
-            img.opacity = 1.0 
-            
-            def scale_img(instance, *args_list):
-                if instance.texture_size and instance.texture_size[1] > 0: 
-                    instance.width = instance.height * (instance.texture_size[0] / instance.texture_size[1])
-            img.bind(height=scale_img, texture_size=scale_img)
-            
-            if pos_mode == 'left': img.pos_hint = {'x': 0.05, 'y': 0.0}
-            elif pos_mode == 'right': img.pos_hint = {'right': 0.95, 'y': 0.0}
-            else: img.pos_hint = {'center_x': 0.5, 'y': 0.0}
-                    
-            if 'sprite_layer' in self.ids: self.ids.sprite_layer.add_widget(img)
-            self.active_sprites[filename] = img
-            self.active_sprite_files[filename] = pos_mode
-
     def handle_choice(self, args):
-        self.auto_mode = False
-        if args:
-            self.choices = [choice.strip() for choice in args.split('|')]
-        else:
-            self.choices = []
+        self.choices = args.split('|')
         self.is_choosing = True
 
     def select_choice(self, val):
-        self.engine.variables["selected"] = val
+        self.variables["selected"] = val
         self.is_choosing = False
         self.run_next_command()
 
     def play_audio(self, raw_args, is_music=True):
         target = self.current_music if is_music else self.current_sound
         if target: target.stop()
-        if raw_args == "~" or not raw_args: return
+        if raw_args.strip() == "~": return
         parts = raw_args.split()
         filepath = self.get_asset('sound', parts[0])
         if filepath and os.path.exists(filepath):
             snd = SoundLoader.load(filepath)
             if snd:
-                snd.volume = self.master_vol * (self.bgm_vol if is_music else self.sfx_vol)
                 snd.loop = (is_music or (len(parts) > 1 and parts[1] == "-1"))
                 snd.play()
                 if is_music: self.current_music = snd
                 else: self.current_sound = snd
 
     def next_line(self):
-        if self.ui_hidden:
-            self.unhide_ui()
-            return
-            
         if self.auto_event: self.auto_event.cancel() 
-        
-        if self.typewriter_event:
-            self.typewriter_event.cancel()
-            self.typewriter_event = None
-            self.dialogue_text = self.full_text
-            if self.auto_mode: self.trigger_auto()
-        elif not self.is_choosing: 
-            self.run_next_command()
+        if not self.is_choosing: self.run_next_command()
 
     def trigger_auto(self):
         if self.auto_event: self.auto_event.cancel()
@@ -450,8 +432,7 @@ class VNInterpreter(BoxLayout):
 
     def toggle_auto(self):
         self.auto_mode = not self.auto_mode
-        if self.auto_mode: 
-            if not self.typewriter_event: self.trigger_auto()
+        if self.auto_mode: self.trigger_auto()
         elif self.auto_event: self.auto_event.cancel()
 
     def hide_ui(self):
@@ -462,125 +443,34 @@ class VNInterpreter(BoxLayout):
         self.ui_hidden = False
         self.ui_opacity = 1.0
 
+    def open_history(self):
+        pass  # TODO: implement dialogue log popup
+
+    def open_in_game_settings(self):
+        from kivy.uix.modalview import ModalView
+        from modules.settings_logic import SettingsMenu
+        view = ModalView(size_hint=(0.85, 0.85), background_color=(0, 0, 0, 0.9))
+        view.add_widget(SettingsMenu())
+        view.open()
+
+    def toggle_fullscreen(self):
+        Window.fullscreen = 'auto' if Window.fullscreen != 'auto' else False
+
     def open_save_ui(self):
         SaveLoadPopup(self, mode='save').open()
 
     def open_load_ui(self):
         SaveLoadPopup(self, mode='load').open()
 
-    def open_history(self):
-        content = BoxLayout(orientation='vertical', padding='10dp', spacing='10dp')
-        scroll = ScrollView(do_scroll_x=False, do_scroll_y=True)
-        grid = BoxLayout(orientation='vertical', size_hint_y=None, spacing='15dp', padding='5dp')
-        grid.bind(minimum_height=grid.setter('height'))
-
-        for entry in self.dialogue_history:
-            lbl = Label(text=entry, markup=True, font_name='./assets/jpfont.ttf', font_size='16sp', size_hint_y=None, halign='left', valign='top', color=(0.95, 0.95, 0.95, 1))
-            lbl.bind(width=lambda s, w: s.setter('text_size')(s, (w, None)))
-            lbl.bind(texture_size=lambda s, t: s.setter('height')(s, t[1]))
-            grid.add_widget(lbl)
-
-        scroll.add_widget(grid)
-        content.add_widget(scroll)
-
-        btn = Button(text="Close Log", size_hint_y=None, height='50dp', font_name='./assets/jpfont.ttf', background_normal='', background_color=(0.2, 0.2, 0.22, 1))
-        content.add_widget(btn)
-
-        popup = Popup(title="Message Log", title_font='./assets/jpfont.ttf', content=content, size_hint=(0.85, 0.85), background_color=(0.1, 0.1, 0.1, 0.95), separator_color=(0.4, 0.4, 0.4, 1))
-        btn.bind(on_release=popup.dismiss)
-        popup.open()
-
-    def open_in_game_settings(self):
-        content = BoxLayout(orientation='vertical', padding='15dp', spacing='10dp')
-        scroll = ScrollView(do_scroll_x=False, do_scroll_y=True)
-        scroll_layout = BoxLayout(orientation='vertical', size_hint_y=None, spacing='12dp')
-        scroll_layout.bind(minimum_height=scroll_layout.setter('height'))
-        
-        speed_box = BoxLayout(orientation='horizontal', size_hint_y=None, height='40dp', spacing='10dp')
-        speed_box.add_widget(Label(text="Auto Speed (s):", font_name='./assets/jpfont.ttf', halign='left', size_hint_x=0.6))
-        speed_input = TextInput(text=str(self.auto_speed), font_name='./assets/jpfont.ttf', input_filter='float', multiline=False, background_color=(0.1, 0.1, 0.1, 1), foreground_color=(1, 1, 1, 1), size_hint_x=0.4)
-        speed_box.add_widget(speed_input)
-        scroll_layout.add_widget(speed_box)
-
-        disp_box = BoxLayout(orientation='horizontal', size_hint_y=None, height='40dp', spacing='10dp')
-        disp_box.add_widget(Label(text="Display Mode:", font_name='./assets/jpfont.ttf', halign='left', size_hint_x=0.6))
-        disp_btn = Button(text="Fixed" if self.bg_keep_ratio else "Full", font_name='./assets/jpfont.ttf', background_normal='', background_color=(0.15, 0.15, 0.15, 1), size_hint_x=0.4)
-        def toggle_disp(instance): instance.text = "Full" if instance.text == "Fixed" else "Fixed"
-        disp_btn.bind(on_release=toggle_disp)
-        disp_box.add_widget(disp_btn)
-        scroll_layout.add_widget(disp_box)
-        
-        m_box = BoxLayout(orientation='horizontal', size_hint_y=None, height='40dp', spacing='10dp')
-        m_box.add_widget(Label(text="Master Vol:", font_name='./assets/jpfont.ttf', size_hint_x=0.4))
-        m_slider = Slider(min=0.0, max=1.0, value=self.master_vol, size_hint_x=0.6)
-        m_box.add_widget(m_slider)
-        scroll_layout.add_widget(m_box)
-        
-        bgm_box = BoxLayout(orientation='horizontal', size_hint_y=None, height='40dp', spacing='10dp')
-        bgm_box.add_widget(Label(text="BGM Vol:", font_name='./assets/jpfont.ttf', size_hint_x=0.4))
-        bgm_slider = Slider(min=0.0, max=1.0, value=self.bgm_vol, size_hint_x=0.6)
-        bgm_box.add_widget(bgm_slider)
-        scroll_layout.add_widget(bgm_box)
-        
-        sfx_box = BoxLayout(orientation='horizontal', size_hint_y=None, height='40dp', spacing='10dp')
-        sfx_box.add_widget(Label(text="SFX Vol:", font_name='./assets/jpfont.ttf', size_hint_x=0.4))
-        sfx_slider = Slider(min=0.0, max=1.0, value=self.sfx_vol, size_hint_x=0.6)
-        sfx_box.add_widget(sfx_slider)
-        scroll_layout.add_widget(sfx_box)
-        
-        scroll.add_widget(scroll_layout)
-        content.add_widget(scroll)
-        
-        btn_layout = BoxLayout(orientation='horizontal', spacing='10dp', size_hint_y=None, height='45dp')
-        close_btn = Button(text="Cancel", font_name='./assets/jpfont.ttf', background_color=(0.25, 0.25, 0.28, 1))
-        apply_btn = Button(text="Save Settings", font_name='./assets/jpfont.ttf', background_color=(0.2, 0.5, 0.2, 1))
-        
-        btn_layout.add_widget(close_btn)
-        btn_layout.add_widget(apply_btn)
-        content.add_widget(btn_layout)
-        
-        popup = Popup(
-            title="In-Game Settings", 
-            title_font='./assets/jpfont.ttf', 
-            content=content, 
-            size_hint=(0.6, 0.75),
-            background_color=(0.1, 0.1, 0.1, 0.95), 
-            separator_color=(0.4, 0.4, 0.4, 1)
-        )
-        
-        close_btn.bind(on_release=popup.dismiss)
-        
-        def apply_settings(instance):
-            try: self.auto_speed = float(speed_input.text)
-            except ValueError: pass
-            
-            self.bg_keep_ratio = (disp_btn.text == "Fixed")
-            self.master_vol = m_slider.value
-            self.bgm_vol = bgm_slider.value
-            self.sfx_vol = sfx_slider.value
-            
-            if self.current_music:
-                self.current_music.volume = self.master_vol * self.bgm_vol
-                
-            config_file = './assets/saves/setting_configure.txt'
-            try:
-                os.makedirs(os.path.dirname(config_file), exist_ok=True)
-                with open(config_file, 'w', encoding='utf-8') as f:
-                    f.write(f"auto_speed={self.auto_speed}\n")
-                    f.write(f"display_mode={disp_btn.text}\n")
-                    f.write(f"master_vol={self.master_vol}\n")
-                    f.write(f"bgm_vol={self.bgm_vol}\n")
-                    f.write(f"sfx_vol={self.sfx_vol}\n")
-            except Exception as e:
-                Logger.error(f"Settings file saving issue: {e}")
-            popup.dismiss()
-            
-        apply_btn.bind(on_release=apply_settings)
-        popup.open()
-
     def exit_to_menu(self):
         content = BoxLayout(orientation='vertical', padding='15dp', spacing='15dp')
-        msg = Label(text="Are you sure you want to return to the menu?\nUnsaved progress will be lost.", halign='center', valign='middle', font_size='16sp', font_name='./assets/jpfont.ttf')
+        msg = Label(
+            text="Are you sure you want to return to the menu?\nUnsaved progress will be lost.", 
+            halign='center', 
+            valign='middle', 
+            font_size='16sp',
+            font_name='./assets/jpfont.ttf'
+        )
         msg.bind(size=msg.setter('text_size'))
         content.add_widget(msg)
         
@@ -601,7 +491,6 @@ class VNInterpreter(BoxLayout):
     def confirm_exit(self, popup):
         popup.dismiss()
         if self.auto_event: self.auto_event.cancel()
-        if self.typewriter_event: self.typewriter_event.cancel()
         if self.current_music: self.current_music.stop()
         if self.current_sound: self.current_sound.stop()
         App.get_running_app().root.current = 'menu_screen'
@@ -609,59 +498,50 @@ class VNInterpreter(BoxLayout):
     def get_save_state(self):
         return {
             'game': self.current_game_folder,
-            'script': getattr(self.engine, 'current_script_name', 'main.scr'),
-            'line': self.engine.current_line_idx - 1, 
+            'script': getattr(self, 'current_script_name', 'main.scr'),
+            'line': self.current_line_idx - 1, 
             'bg': self.current_bg_name, 
-            'vars': self.engine.variables,
+            'vars': self.variables,
             'char_name': self.char_name,
-            'full_text': self.full_text,
-            'history': self.dialogue_history,
-            'sprites': self.active_sprite_files.copy() 
+            'dialogue_text': self.dialogue_text
         }
 
     def load_save_state(self, data):
         self.load_settings()  
-        if self.auto_event: self.auto_event.cancel()
-        if self.typewriter_event: self.typewriter_event.cancel()
+        
+        if self.auto_event:
+            self.auto_event.cancel()
+            self.auto_event = None
         if self.current_music: self.current_music.stop()
         if self.current_sound: self.current_sound.stop()
 
         self.current_game_folder = data.get('game', '')
-        self._apply_custom_ui()
-        self.dialogue_history = data.get('history', [])
-
-        self.engine.variables = data.get('vars', {})
+        self.variables = data.get('vars', {})
         self.char_name = data.get('char_name', '')
-        self.full_text = data.get('full_text', '')
-        
-        self.dialogue_text = self.full_text 
+        self.dialogue_text = data.get('dialogue_text', '')
         
         self.current_bg_name = data.get('bg', '')
-        if self.current_bg_name: self.bg_source = self.get_asset('background', self.current_bg_name)
-        else: self.bg_source = ""
-       
-        if 'sprite_layer' in self.ids: self.ids.sprite_layer.clear_widgets()
-        self.active_sprites.clear()
-        self.active_sprite_files.clear()
+        if self.current_bg_name:
+            self.bg_source = self.get_asset('background', self.current_bg_name)
+        else:
+            self.bg_source = ""
         
-        saved_sprites = data.get('sprites', {})
-
-        for filename, pos_mode in saved_sprites.items():
-            self.restore_sprite(filename, pos_mode)
+        if 'sprite_layer' in self.ids: self.ids.sprite_layer.clear_widgets()
 
         script_name = data.get('script', 'main.scr')
         target_script = self.get_asset('script', script_name)
         
         if target_script and os.path.exists(target_script):
-            self.engine.load_script(target_script)
-            self.engine.current_line_idx = max(0, data.get('line', 0))
+            self.load_script(target_script)
         else:
             Logger.error(f"Interpreter: Missing Script {script_name}")
             return
-            
-        for i in range(self.engine.current_line_idx - 1, -1, -1):
-            if i < len(self.engine.script_lines):
-                line = self.engine.script_lines[i].strip()
+        
+        self.current_line_idx = max(0, data.get('line', 0))
+
+        for i in range(self.current_line_idx - 1, -1, -1):
+            if i < len(self.script_lines):
+                line = self.script_lines[i].strip()
                 parts = line.split(' ', 1)
                 cmd = parts[0].lower()
                 if cmd == "music":
