@@ -42,7 +42,6 @@ class VNInterpreter(BoxLayout):
         self.current_sound = None
         self.auto_event = None
         self.current_bg_name = ""
-        # label name -> line index map, rebuilt whenever a script is loaded
         self._labels = {}
 
     def load_settings(self):
@@ -70,7 +69,6 @@ class VNInterpreter(BoxLayout):
         subfolder = filename.split('/')[0] if '/' in filename else None
 
         def find_file_nocase(directory, rel_path):
-            """Walk rel_path components case-insensitively inside directory."""
             current = directory
             for part in rel_path.replace('\\', '/').split('/'):
                 if not os.path.isdir(current):
@@ -85,17 +83,12 @@ class VNInterpreter(BoxLayout):
                 current = os.path.join(current, match)
             return current if os.path.exists(current) else None
 
-        # --- Direct file lookups (case-insensitive) ---
         if category:
             p = find_file_nocase(base, f"{category}/{filename}")
             if p: return p
         p = find_file_nocase(base, filename)
         if p: return p
-        if category and subfolder:
-            p = find_file_nocase(base, f"{category}/{basename}")
-            if p: return p
 
-        # --- Zip lookups ---
         zip_names_to_try = []
         if category: zip_names_to_try.append(category)
         if subfolder and subfolder != category: zip_names_to_try.append(subfolder)
@@ -107,7 +100,6 @@ class VNInterpreter(BoxLayout):
         except Exception: pass
 
         filename_lower = filename.replace('\\', '/').lower()
-        basename_lower = basename.lower()
 
         for zip_name in zip_names_to_try:
             zip_path = os.path.join(base, f"{zip_name}.zip")
@@ -121,7 +113,7 @@ class VNInterpreter(BoxLayout):
                     for info in z.infolist():
                         if info.filename.endswith('/'): continue
                         entry_lower = info.filename.replace('\\', '/').lower()
-                        if entry_lower.endswith(filename_lower) or entry_lower.endswith(basename_lower):
+                        if entry_lower.endswith(filename_lower):
                             if not os.path.exists(cached_file) or os.path.getsize(cached_file) == 0:
                                 with z.open(info) as src, open(cached_file, 'wb') as dst:
                                     dst.write(src.read())
@@ -150,18 +142,14 @@ class VNInterpreter(BoxLayout):
     def load_script(self, path):
         self.current_script_name = os.path.basename(path)
         try:
-            with open(path, 'r', encoding='utf-8-sig') as f:  # utf-8-sig strips BOM automatically
+            with open(path, 'r', encoding='utf-8-sig') as f:
                 raw = [line.strip() for line in f.readlines()]
-            # Keep non-empty lines; also keep label lines even if only whitespace-adjacent
             self.script_lines = [l for l in raw if l]
             self.current_line_idx = 0
             self._build_label_map()
         except Exception as e:
             Logger.error(f"Interpreter Error: {e}")
 
-    # ------------------------------------------------------------------
-    # Label map: scan once after loading so goto/label are O(1)
-    # ------------------------------------------------------------------
     def _build_label_map(self):
         self._labels = {}
         for idx, line in enumerate(self.script_lines):
@@ -169,21 +157,14 @@ class VNInterpreter(BoxLayout):
             if parts[0].lower() == 'label' and len(parts) > 1:
                 self._labels[parts[1].strip()] = idx
 
-    # ------------------------------------------------------------------
-    # Variable interpolation: replace {$varname} with current value
-    # ------------------------------------------------------------------
     def _interpolate(self, text):
         def replacer(m):
             key = m.group(1)
             return str(self.variables.get(key, m.group(0)))
         return re.sub(r'\{\$(\w+)\}', replacer, text)
 
-    # ------------------------------------------------------------------
-    # Evaluate a simple VNDS condition:  selected <= 3 / selected == 1
-    # ------------------------------------------------------------------
     def _eval_condition(self, expr):
         expr = expr.strip()
-        # Support: varname OP value
         m = re.match(r'(\w+)\s*(==|!=|<=|>=|<|>)\s*(.+)', expr)
         if m:
             lhs_name, op, rhs_raw = m.groups()
@@ -197,14 +178,10 @@ class VNInterpreter(BoxLayout):
                    '<=': lambda a,b: a<=b, '>=': lambda a,b: a>=b,
                    '<':  lambda a,b: a<b,  '>':  lambda a,b: a>b}
             return ops[op](lhs, rhs)
-        # Bare variable: truthy if non-zero / non-empty
         val = self.variables.get(expr, 0)
         try: return float(val) != 0
         except: return bool(val)
 
-    # ------------------------------------------------------------------
-    # Skip an if-block when condition is false
-    # ------------------------------------------------------------------
     def _skip_if_block(self):
         depth = 1
         while self.current_line_idx < len(self.script_lines):
@@ -226,7 +203,6 @@ class VNInterpreter(BoxLayout):
         cmd = parts[0].lower()
         args = parts[1] if len(parts) > 1 else ""
 
-        # ---- interpolate variable references in args ----
         args = self._interpolate(args)
 
         if cmd == "text": 
@@ -234,7 +210,6 @@ class VNInterpreter(BoxLayout):
             if self.auto_mode: self.trigger_auto()
 
         elif cmd == "cleartext":
-            # cleartext clears dialogue; argument '!' also clears char name
             self.dialogue_text = ""
             self.char_name = ""
             self.run_next_command()
@@ -278,7 +253,6 @@ class VNInterpreter(BoxLayout):
             self.run_next_command()
 
         elif cmd == "label":
-            # label declarations are skipped at runtime; they're indexed at load time
             self.run_next_command()
 
         elif cmd == "goto":
@@ -292,13 +266,12 @@ class VNInterpreter(BoxLayout):
         elif cmd == "if":
             condition = args.strip()
             if self._eval_condition(condition):
-                self.run_next_command()  # execute the block
+                self.run_next_command() 
             else:
                 self._skip_if_block()
-                self.run_next_command()  # continue after fi
+                self.run_next_command() 
 
         elif cmd == "fi":
-            # end of an if block we were executing; just continue
             self.run_next_command()
 
         elif cmd == "setvar":
@@ -308,17 +281,6 @@ class VNInterpreter(BoxLayout):
         else:
             self.run_next_command()
 
-    # ------------------------------------------------------------------
-    # setvar handler
-    #
-    # VNDS setvar syntax variants:
-    #   setvar varname = value      (assignment)
-    #   setvar varname + value      (add)
-    #   setvar varname - value      (subtract)
-    #   setvar varname * value      (multiply)
-    #   setvar varname / value      (divide)
-    #   setvar ~ ~                  (no-op / reset placeholder — ignore)
-    # ------------------------------------------------------------------
     def handle_setvar(self, args):
         args = args.strip()
         if args == "~ ~" or args == "~":
@@ -332,14 +294,13 @@ class VNInterpreter(BoxLayout):
         varname, op, raw_val = m.groups()
         raw_val = raw_val.strip().strip('"')
 
-        # Value may itself be a variable name
         if raw_val in self.variables:
             value = self.variables[raw_val]
         else:
             try:
                 value = float(raw_val) if '.' in raw_val else int(raw_val)
             except ValueError:
-                value = raw_val  # string value
+                value = raw_val
 
         current = self.variables.get(varname, 0)
 
@@ -358,7 +319,6 @@ class VNInterpreter(BoxLayout):
             try: self.variables[varname] = float(current) / float(value)
             except ZeroDivisionError: self.variables[varname] = 0
 
-        # Keep integer-looking floats as ints for cleaner interpolation
         v = self.variables[varname]
         if isinstance(v, float) and v == int(v):
             self.variables[varname] = int(v)
@@ -444,7 +404,7 @@ class VNInterpreter(BoxLayout):
         self.ui_opacity = 1.0
 
     def open_history(self):
-        pass  # TODO: implement dialogue log popup
+        pass
 
     def open_in_game_settings(self):
         from kivy.uix.modalview import ModalView
