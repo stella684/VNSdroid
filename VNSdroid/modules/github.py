@@ -28,7 +28,6 @@ APP_ROOT = os.path.abspath(".")
 
 
 def is_online(host="8.8.8.8", port=53, timeout=3):
-    """Quick TCP check — no HTTP needed, very fast."""
     try:
         socket.setdefaulttimeout(timeout)
         socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
@@ -54,7 +53,6 @@ class GithubMenu(BoxLayout):
                 pass
         return "unknown"
 
-
     def _load_readme(self):
         if 'readme_label' not in self.ids:
             return
@@ -76,25 +74,17 @@ class GithubMenu(BoxLayout):
         threading.Thread(target=fetch, daemon=True).start()
 
     def _parse_markdown(self, text):
-
         text = text.replace('[', '&bl;').replace(']', '&br;')
-        
         text = re.sub(r'(?m)^# (.*?)$', r'[size=26sp][b][color=ffffff]\1[/color][/b][/size]', text)
         text = re.sub(r'(?m)^## (.*?)$', r'[size=22sp][b][color=eeeeee]\1[/color][/b][/size]', text)
         text = re.sub(r'(?m)^### (.*?)$', r'[size=18sp][b][color=dddddd]\1[/color][/b][/size]', text)
-        
         text = re.sub(r'\*\*(.*?)\*\*', r'[b]\1[/b]', text)
         text = re.sub(r'\*(.*?)\*', r'[i]\1[/i]', text)
         text = re.sub(r'_(.*?)_', r'[i]\1[/i]', text)
-        
         text = re.sub(r'`(.*?)`', r'[color=c9d1d9]\1[/color]', text)
-        
         text = re.sub(r'&bl;(.*?)&br;\((.*?)\)', r'[color=58a6ff][ref=\2]\1[/ref][/color]', text)
-        
         text = re.sub(r'(?m)^[-*]\s+(.*?)$', r'  • \1', text)
-        
         text = re.sub(r'(?m)^>\s+(.*?)$', r'[color=8b949e]    | \1[/color]', text)
-        
         return text
 
     def open_url(self, instance, url):
@@ -209,7 +199,6 @@ class GithubMenu(BoxLayout):
         Clock.schedule_once(_do)
 
     def _download_and_install(self):
-
         if not is_online():
             Clock.schedule_once(lambda dt: self._on_update_offline())
             return
@@ -264,14 +253,19 @@ class GithubMenu(BoxLayout):
             total_items = max(len(items), 1)
 
             for i, item in enumerate(items):
+                if item in ['games', 'saves']:
+                    pct = 80 + int((i + 1) / total_items * 15)
+                    self._set_progress(pct, f"Installing... ({i+1}/{total_items})")
+                    continue
+                
                 src = os.path.join(source_root, item)
                 dst = os.path.join(APP_ROOT, item)
+                
                 if os.path.isdir(src):
-                    if os.path.exists(dst):
-                        shutil.rmtree(dst)
-                    shutil.copytree(src, dst)
+                    shutil.copytree(src, dst, dirs_exist_ok=True)
                 else:
                     shutil.copy2(src, dst)
+                    
                 pct = 80 + int((i + 1) / total_items * 15)
                 self._set_progress(pct, f"Installing... ({i+1}/{total_items})")
 
@@ -406,4 +400,3 @@ class GithubMenu(BoxLayout):
 
     def go_settings(self):
         App.get_running_app().root.current = 'settings_screen'
-
