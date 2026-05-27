@@ -16,9 +16,10 @@
         canvas.before:
             Color:
                 rgba: 0.08, 0.08, 0.08, 1
-            Rectangle:
+            RoundedRectangle:
                 pos: self.pos
                 size: self.size
+                radius: [0, 0, dp(15), dp(15)]
         
         Image:
             source: './assets/icon.png'
@@ -29,25 +30,36 @@
         
         Label:
             text: "VNSdroid"
+            font_name: './assets/jpfont.ttf'
             font_size: '24sp'
             bold: True
             size_hint_x: None
             width: self.texture_size[0]
-            text_size: None, self.height
+            text_size: None, None
             halign: 'left'
-            valign: 'bottom'
-            padding_y: '8dp'
+            valign: 'middle'
             color: 1, 1, 1, 1
 
         Label:
             text: root.app_version
-            font_size: '14sp'
-            color: 0.5, 0.5, 0.5, 1
+            font_name: './assets/jpfont.ttf'
+            font_size: '12sp'
+            color: 0.8, 0.8, 0.8, 1
+            size_hint: None, None
+            size: self.texture_size[0] + dp(16), '24dp'
+            pos_hint: {'center_y': 0.5}
+            halign: 'center'
+            valign: 'middle'
+            canvas.before:
+                Color:
+                    rgba: 0.15, 0.15, 0.15, 1
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(12)]
+        
+        Widget:
             size_hint_x: 1
-            text_size: self.size
-            halign: 'left'
-            valign: 'bottom'
-            padding_y: '8dp'
 
     FloatLayout:
         size_hint: 1, 1
@@ -83,7 +95,7 @@
                     height: '45dp'
                     spacing: '10dp'
                     Label:
-                        text: "Auto"
+                        text: "Auto Mode Speed"
                         font_name: './assets/jpfont.ttf'
                         font_size: '16sp'
                         size_hint_x: 0.5
@@ -123,7 +135,7 @@
                     height: '45dp'
                     spacing: '10dp'
                     Label:
-                        text: "Screen"
+                        text: "Screen Orientation"
                         font_name: './assets/jpfont.ttf'
                         font_size: '16sp'
                         size_hint_x: 0.5
@@ -136,15 +148,21 @@
                         font_name: './assets/jpfont.ttf'
                         size_hint_x: 0.5
                         background_normal: ''
-                        background_color: 0.1, 0.1, 0.1, 1
+                        background_color: 0, 0, 0, 0
                         color: 1, 1, 1, 1
                         on_release: root.toggle_display_mode()
+                        canvas.before:
+                            Color:
+                                rgba: (0.1, 0.1, 0.1, 1) if self.state == 'normal' else (0.18, 0.18, 0.18, 1)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [dp(5)]
 
                 Widget:
                     size_hint_y: None
                     height: '10dp'
 
-   
                 Label:
                     text: "Audio"
                     font_name: './assets/jpfont.ttf'
@@ -170,12 +188,23 @@
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
+                        color: 0.8, 0.8, 0.8, 1
                     Slider:
                         min: 0.0
                         max: 1.0
                         value: root.master_vol
                         size_hint_x: 0.6
                         on_value: root.update_volume('master', self.value)
+                        cursor_image: ''
+                        cursor_size: 0, 0
+                        value_track: True
+                        value_track_color: 1, 1, 1, 1
+                        canvas.after:
+                            Color:
+                                rgba: 1, 1, 1, 1
+                            Ellipse:
+                                pos: self.value_pos[0] - dp(8), self.center_y - dp(8)
+                                size: dp(16), dp(16)
 
                 BoxLayout:
                     orientation: 'horizontal'
@@ -190,12 +219,23 @@
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
+                        color: 0.8, 0.8, 0.8, 1
                     Slider:
                         min: 0.0
                         max: 1.0
                         value: root.bgm_vol
                         size_hint_x: 0.6
                         on_value: root.update_volume('bgm', self.value)
+                        cursor_image: ''
+                        cursor_size: 0, 0
+                        value_track: True
+                        value_track_color: 1, 1, 1, 1
+                        canvas.after:
+                            Color:
+                                rgba: 1, 1, 1, 1
+                            Ellipse:
+                                pos: self.value_pos[0] - dp(8), self.center_y - dp(8)
+                                size: dp(16), dp(16)
 
                 BoxLayout:
                     orientation: 'horizontal'
@@ -210,12 +250,23 @@
                         halign: 'left'
                         valign: 'middle'
                         text_size: self.size
+                        color: 0.8, 0.8, 0.8, 1
                     Slider:
                         min: 0.0
                         max: 1.0
                         value: root.sfx_vol
                         size_hint_x: 0.6
                         on_value: root.update_volume('sfx', self.value)
+                        cursor_image: ''
+                        cursor_size: 0, 0
+                        value_track: True
+                        value_track_color: 1, 1, 1, 1
+                        canvas.after:
+                            Color:
+                                rgba: 1, 1, 1, 1
+                            Ellipse:
+                                pos: self.value_pos[0] - dp(8), self.center_y - dp(8)
+                                size: dp(16), dp(16)
 
                 Widget:
                     size_hint_y: None
@@ -238,9 +289,16 @@
                     size_hint_y: None
                     height: '45dp'
                     background_normal: ''
-                    background_color: 0.1, 0.1, 0.1, 1
+                    background_color: 0, 0, 0, 0
                     color: 1, 1, 1, 1
                     on_release: root.open_text_popup("Help", "help.txt")
+                    canvas.before:
+                        Color:
+                            rgba: (0.1, 0.1, 0.1, 1) if self.state == 'normal' else (0.18, 0.18, 0.18, 1)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(5)]
 
                 Widget:
                     size_hint_y: None
@@ -263,15 +321,22 @@
                     size_hint_y: None
                     height: '45dp'
                     background_normal: ''
-                    background_color: 0.1, 0.1, 0.1, 1
+                    background_color: 0, 0, 0, 0
                     color: 1, 1, 1, 1
                     on_release: root.open_text_popup("About Me", "aboutme.txt")
-
+                    canvas.before:
+                        Color:
+                            rgba: (0.1, 0.1, 0.1, 1) if self.state == 'normal' else (0.18, 0.18, 0.18, 1)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(5)]
 
     BoxLayout:
         size_hint_y: None
         height: '55dp'
         spacing: '2dp'
+        padding: ['2dp', '2dp', '2dp', '2dp']
         canvas.before:
             Color:
                 rgba: 0.05, 0.05, 0.05, 1
@@ -293,5 +358,15 @@
             font_name: './assets/jpfont.ttf'
             font_size: '16sp'
             background_normal: ''
+            background_color: 0.15, 0.15, 0.15, 1  # Highlight active tab
+            color: 1, 1, 1, 1
+
+        # --- ADDED GITHUB BUTTON ---
+        Button:
+            text: "GitHub"
+            font_name: './assets/jpfont.ttf'
+            font_size: '16sp'
+            background_normal: ''
             background_color: 0.08, 0.08, 0.08, 1
             color: 1, 1, 1, 1
+            on_release: app.root.current = 'github_screen'

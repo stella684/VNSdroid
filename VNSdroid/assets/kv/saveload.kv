@@ -1,49 +1,81 @@
-
 <SlotItem@ButtonBehavior+BoxLayout>:
+    orientation: 'vertical'
+    size_hint_y: None
+    height: '140dp'
+    padding: '6dp'
+    spacing: '6dp'
+    
     slot_num: 0
-    popup_ref: None
     thumb_source: ''
     slot_text: ''
-    
-    orientation: 'horizontal'
-    size_hint_y: None
-    height: '90dp'
-    padding: '8dp'
-    spacing: '15dp'
-    
+    time_text: ''
+    is_empty: True
+
     canvas.before:
         Color:
-            rgba: (0.1, 0.1, 0.1, 1) if self.state == 'normal' else (0.18, 0.18, 0.18, 1)
+            rgba: (0.1, 0.1, 0.12, 1) if self.state == 'normal' else (0.18, 0.18, 0.2, 1)
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [8]
+            radius: [dp(8)]
 
-    Image:
-        source: root.thumb_source
-        size_hint_x: None
-        width: '120dp'
-        allow_stretch: True
-        keep_ratio: True
+    RelativeLayout:
+        size_hint_y: 0.75
+        
+        canvas.before:
+            Color:
+                rgba: (0.95, 0.95, 0.95, 1) if root.is_empty else (0, 0, 0, 1)
+            Rectangle:
+                pos: 0, 0
+                size: self.size
+        
+        Image:
+            source: root.thumb_source
+            allow_stretch: True
+            keep_ratio: False
+            opacity: 0 if root.is_empty else 1
+            nocache: True
+
+        Label:
+            text: "EMPTY" if root.is_empty else ""
+            font_name: './assets/jpfont.ttf'
+            font_size: '22sp'
+            bold: True
+            outline_width: 2
+            outline_color: 0, 0, 0, 1
+            color: 1, 1, 1, 1
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+
+        Label:
+            text: root.time_text
+            font_name: './assets/jpfont.ttf'
+            font_size: '13sp'
+            bold: True
+            outline_width: 1.5
+            outline_color: 0, 0, 0, 1
+            color: 1, 1, 1, 1
+            size_hint: None, None
+            size: self.texture_size
+            pos_hint: {'center_x': 0.5, 'y': 0.03}
 
     Label:
+        size_hint_y: 0.25
         text: root.slot_text
-        markup: True
-        font_size: '15sp'
         font_name: './assets/jpfont.ttf'
-        halign: 'left'
+        font_size: '14sp'
+        halign: 'center'
         valign: 'middle'
         text_size: self.size
-        color: 0.95, 0.95, 0.95, 1
+        color: 0.9, 0.9, 0.9, 1
 
 <SaveLoadPopup>:
-    size_hint: 0.7, 0.85
-    background_color: 0, 0, 0, 0.85
+    size_hint: 1, 1  
+    background_color: 0, 0, 0, 0
     
     BoxLayout:
         orientation: 'vertical'
         padding: '20dp'
-        spacing: '15dp'
+        spacing: '10dp'
         
         canvas.before:
             Color:
@@ -51,15 +83,34 @@
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [12]
+                radius: [0, 0, dp(15), dp(15)]
 
-        Label:
-            text: "SAVE PROGRESS" if root.mode == 'save' else "LOAD PROGRESS"
-            font_size: '22sp'
-            bold: True
+        BoxLayout:
+            orientation: 'horizontal'
             size_hint_y: None
-            height: '40dp'
-            color: 1, 1, 1, 1
+            height: '35dp'
+            padding: ['5dp', 0, '5dp', 0]
+            
+            Label:
+                text: "SAVE PROGRESS" if root.mode == 'save' else "LOAD PROGRESS"
+                font_name: './assets/jpfont.ttf'
+                font_size: '20sp'
+                bold: True
+                color: 1, 1, 1, 1
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
+                
+            Button:
+                text: "Cancel"
+                font_name: './assets/jpfont.ttf'
+                font_size: '18sp'
+                size_hint_x: None
+                width: '100dp'
+                background_normal: ''
+                background_color: 0, 0, 0, 0
+                color: 1, 0.3, 0.3, 1  
+                on_release: root.dismiss()
 
         ScrollView:
             do_scroll_x: False
@@ -67,16 +118,8 @@
             
             GridLayout:
                 id: slot_container
-                cols: 1
+                cols: 4
                 size_hint_y: None
                 height: self.minimum_height
-                spacing: '10dp'
-
-        Button:
-            text: "Cancel"
-            size_hint_y: None
-            height: '50dp'
-            background_normal: ''
-            background_color: 0.15, 0.15, 0.15, 1 
-            color: 1, 1, 1, 1
-            on_release: root.dismiss()
+                spacing: '15dp'
+                padding: '5dp'

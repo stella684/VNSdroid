@@ -16,58 +16,69 @@
         canvas.before:
             Color:
                 rgba: 0.08, 0.08, 0.08, 1
-            Rectangle:
+            RoundedRectangle:
                 pos: self.pos
                 size: self.size
-        
+                radius: [0, 0, dp(15), dp(15)]
+
         Image:
             source: './assets/icon.png'
             size_hint_x: None
             width: '40dp'
             allow_stretch: True
             keep_ratio: True
-        
+
         Label:
             text: "VNSdroid"
+            font_name: './assets/jpfont.ttf'
             font_size: '24sp'
             bold: True
             size_hint_x: None
             width: self.texture_size[0]
-            text_size: None, self.height
+            text_size: None, None
             halign: 'left'
-            valign: 'bottom'
-            padding_y: '8dp'
+            valign: 'middle'
             color: 1, 1, 1, 1
-        
+
         Label:
             text: root.app_version
-            font_size: '14sp'
-            color: 0.5, 0.5, 0.5, 1
-            size_hint_x: None
-            width: self.texture_size[0]
-            text_size: None, self.height
-            halign: 'left'
-            valign: 'bottom'
-            padding_y: '8dp'
+            font_name: './assets/jpfont.ttf'
+            font_size: '12sp'
+            color: 0.8, 0.8, 0.8, 1
+            size_hint: None, None
+            size: self.texture_size[0] + dp(16), '24dp'
+            pos_hint: {'center_y': 0.5}
+            halign: 'center'
+            valign: 'middle'
+            canvas.before:
+                Color:
+                    rgba: 0.15, 0.15, 0.15, 1
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(12)]
 
         Widget:
             size_hint_x: 1
 
     ScrollView:
+        size_hint_y: 1
         do_scroll_x: False
         do_scroll_y: True
+
         BoxLayout:
             id: games_list
             orientation: 'vertical'
             size_hint_y: None
             height: self.minimum_height
             padding: '15dp'
-            spacing: '12dp'
+            spacing: '15dp'
 
     BoxLayout:
         size_hint_y: None
         height: '55dp'
         spacing: '2dp'
+        padding: ['2dp', '2dp', '2dp', '2dp']
         canvas.before:
             Color:
                 rgba: 0.05, 0.05, 0.05, 1
@@ -77,49 +88,70 @@
 
         Button:
             text: "Home"
+            font_name: './assets/jpfont.ttf'
             font_size: '16sp'
             background_normal: ''
-            background_color: 0.08, 0.08, 0.09, 1
+            background_color: 0.15, 0.15, 0.15, 1
             color: 1, 1, 1, 1
 
         Button:
             text: "Settings"
+            font_name: './assets/jpfont.ttf'
             font_size: '16sp'
             background_normal: ''
             background_color: 0.08, 0.08, 0.09, 1
             color: 1, 1, 1, 1
             on_release: app.root.current = 'settings_screen'
 
+        Button:
+            text: "GitHub"
+            font_name: './assets/jpfont.ttf'
+            font_size: '16sp'
+            background_normal: ''
+            background_color: 0.08, 0.08, 0.09, 1
+            color: 1, 1, 1, 1
+            on_release: app.root.current = 'github_screen'
 
 <GameItem>:
     orientation: 'horizontal'
     size_hint_y: None
     height: '90dp'
-    padding: '12dp'
+    padding: '10dp'
     spacing: '15dp'
-    
     canvas.before:
         Color:
-            rgba: (0.1, 0.1, 0.1, 1) if self.state == 'normal' else (0.18, 0.18, 0.18, 1)
+            rgba: 0.07, 0.07, 0.08, 1
         RoundedRectangle:
             pos: self.pos
             size: self.size
-            radius: [8]
+            radius: [dp(14)]
 
     Image:
         source: root.icon_path
         size_hint: None, None
-        size: '66dp', '66dp'
+        size: '70dp', '70dp'
         allow_stretch: True
-        keep_ratio: True
-        pos_hint: {'center_y': 0.5}
+        keep_ratio: False
 
-    Label:
-        text: root.game_name
-        font_size: '18sp'
-        font_name: './assets/jpfont.ttf'
-        bold: True
-        halign: 'left'
-        valign: 'middle'
-        text_size: self.size
-        color: 1, 1, 1, 1
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: '4dp'
+
+        Label:
+            text: root.game_name
+            font_name: './assets/jpfont.ttf'
+            font_size: '18sp'
+            bold: True
+            halign: 'left'
+            valign: 'middle'
+            text_size: self.size
+            color: 1, 1, 1, 1
+
+        Label:
+            text: root.game_folder_path
+            font_name: './assets/jpfont.ttf'
+            font_size: '12sp'
+            halign: 'left'
+            valign: 'middle'
+            text_size: self.size
+            color: 0.5, 0.5, 0.5, 1

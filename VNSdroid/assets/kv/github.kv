@@ -1,0 +1,213 @@
+<GithubMenu>:
+    orientation: 'vertical'
+    canvas.before:
+        Color:
+            rgba: 0, 0, 0, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint_y: None
+        height: '60dp'
+        padding: '10dp'
+        spacing: '10dp'
+        canvas.before:
+            Color:
+                rgba: 0.08, 0.08, 0.08, 1
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [0, 0, dp(15), dp(15)]
+
+        Image:
+            source: './assets/icon.png'
+            size_hint_x: None
+            width: '40dp'
+            allow_stretch: True
+            keep_ratio: True
+
+        Label:
+            text: "VNSdroid"
+            font_name: './assets/jpfont.ttf'
+            font_size: '24sp'
+            bold: True
+            size_hint_x: None
+            width: self.texture_size[0]
+            text_size: None, None
+            halign: 'left'
+            valign: 'middle'
+            color: 1, 1, 1, 1
+
+        Widget:
+            size_hint_x: 1
+
+    ScrollView:
+        do_scroll_x: False
+        do_scroll_y: True
+        size_hint_y: 1
+
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: self.minimum_height
+            padding: '20dp'
+            spacing: '20dp'
+
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: '160dp'
+                spacing: '10dp'
+
+                AnchorLayout:
+                    anchor_x: 'center'
+                    size_hint_y: None
+                    height: '90dp'
+                    Image:
+                        source: './assets/icon.png'
+                        size_hint: None, None
+                        size: '80dp', '80dp'
+                        allow_stretch: True
+                        keep_ratio: True
+
+                Label:
+                    text: "VNSdroid"
+                    font_name: './assets/jpfont.ttf'
+                    font_size: '22sp'
+                    bold: True
+                    size_hint_y: None
+                    height: '30dp'
+                    halign: 'center'
+                    valign: 'middle'
+                    text_size: self.size
+                    color: 1, 1, 1, 1
+
+                Label:
+                    text: "Visual Novel Player for Android"
+                    font_name: './assets/jpfont.ttf'
+                    font_size: '13sp'
+                    size_hint_y: None
+                    height: '20dp'
+                    halign: 'center'
+                    valign: 'middle'
+                    text_size: self.size
+                    color: 0.55, 0.55, 0.55, 1
+
+            AnchorLayout:
+                anchor_x: 'center'
+                size_hint_y: None
+                height: '50dp'
+
+                Button:
+                    id: update_btn
+                    text: "Check for Updates"
+                    font_name: './assets/jpfont.ttf'
+                    font_size: '16sp'
+                    size_hint: None, None
+                    size: '220dp', '46dp'
+                    background_normal: ''
+                    background_color: 0, 0, 0, 0
+                    color: 1, 1, 1, 1
+                    on_release: root.check_update()
+                    canvas.before:
+                        Color:
+                            rgba: (0.12, 0.38, 0.62, 1) if self.state == 'normal' else (0.18, 0.48, 0.75, 1)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(14)]
+
+            BoxLayout:
+                size_hint_y: None
+                height: '1dp'
+                canvas.before:
+                    Color:
+                        rgba: 0.2, 0.2, 0.22, 1
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+
+            Label:
+                text: "README"
+                font_name: './assets/jpfont.ttf'
+                font_size: '16sp'
+                bold: True
+                size_hint_y: None
+                height: '28dp'
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
+                color: 0.65, 0.65, 0.65, 1
+
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: None
+                height: self.minimum_height
+                padding: '15dp'
+                
+                canvas.before:
+                    Color:
+                        rgba: 0.05, 0.05, 0.06, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(8)]
+                    Color:
+                        rgba: 0.2, 0.2, 0.22, 1
+                    Line:
+                        rounded_rectangle: [self.x, self.y, self.width, self.height, dp(8)]
+                        width: 1
+
+                Label:
+                    id: readme_label
+                    text: "Loading..."
+                    markup: True
+                    font_name: './assets/jpfont.ttf'
+                    font_size: '15sp'
+                    size_hint_y: None
+                    height: self.texture_size[1]
+                    halign: 'left'
+                    valign: 'top'
+                    text_size: self.width, None
+                    color: 0.88, 0.88, 0.88, 1
+                    on_ref_press: root.open_url(*args)
+
+    BoxLayout:
+        size_hint_y: None
+        height: '55dp'
+        spacing: '2dp'
+        padding: ['2dp', '2dp', '2dp', '2dp']
+        canvas.before:
+            Color:
+                rgba: 0.05, 0.05, 0.05, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        Button:
+            text: "Home"
+            font_name: './assets/jpfont.ttf'
+            font_size: '16sp'
+            background_normal: ''
+            background_color: 0.08, 0.08, 0.08, 1
+            color: 1, 1, 1, 1
+            on_release: root.go_home()
+
+        Button:
+            text: "Settings"
+            font_name: './assets/jpfont.ttf'
+            font_size: '16sp'
+            background_normal: ''
+            background_color: 0.08, 0.08, 0.08, 1
+            color: 1, 1, 1, 1
+            on_release: root.go_settings()
+
+        Button:
+            text: "GitHub"
+            font_name: './assets/jpfont.ttf'
+            font_size: '16sp'
+            background_normal: ''
+            background_color: 0.15, 0.15, 0.15, 1
+            color: 1, 1, 1, 1

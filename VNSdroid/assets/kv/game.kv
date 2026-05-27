@@ -1,3 +1,17 @@
+<DrawerButton@Button>:
+    font_name: './assets/jpfont.ttf'
+    background_normal: ''
+    background_color: 0, 0, 0, 0
+    size_hint_y: None
+    height: '45dp'
+    canvas.before:
+        Color:
+            rgba: (0, 0, 0, 0) if self.state == 'normal' else (0.15, 0.15, 0.18, 0.8)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(12)]
+
 <VNInterpreter>:
     canvas.after:
         Color:
@@ -14,201 +28,292 @@
                 pos: self.pos
                 size: self.size
 
-        Image:
-            id: bg_image
-            source: root.bg_source
-            allow_stretch: True
-            keep_ratio: root.bg_keep_ratio
+        # --- CAPTURE LAYER (Background + Sprites Only) ---
+        FloatLayout:
+            id: capture_layer
+            size_hint: 1, 1
 
-        AnchorLayout:
-            anchor_x: 'center'
-            anchor_y: 'center'
+            # --- 1. BACKGROUND LAYER ---
+            Image:
+                id: bg_image
+                source: root.bg_source
+                allow_stretch: True
+                keep_ratio: root.bg_keep_ratio
 
-            RelativeLayout:
-                size_hint: None, None
-                size: bg_image.norm_image_size
+            # --- 2. CENTERED GAME LAYER ---
+            AnchorLayout:
+                anchor_x: 'center'
+                anchor_y: 'center'
 
-                Button:
-                    background_color: 0, 0, 0, 0
-                    size_hint: 1, 1
-                    on_release: root.next_line()
+                RelativeLayout:
+                    id: game_viewport
+                    size_hint: None, None
+                    size: bg_image.norm_image_size
 
-                FloatLayout:
-                    id: sprite_layer
-                    size_hint: 1, 1
-
-                FloatLayout:
-                    id: default_ui_layer
-                    opacity: root.ui_opacity
-                    disabled: root.ui_hidden
-
-                    BoxLayout:
-                        size_hint: 1, None
-                        height: '40dp'
-                        pos_hint: {'top': 1.0}
-                        orientation: 'horizontal'
-                        spacing: '4dp'
-                        padding: ['5dp', '2dp', '5dp', '2dp']
+                    FloatLayout:
+                        id: sprite_layer
+                        size_hint: 1, 1
                         
-                        canvas.before:
-                            Color:
-                                rgba: 0, 0, 0, 0.4
-                            Rectangle:
-                                pos: self.pos
-                                size: self.size
-                            
-                        Widget:
-                            size_hint_x: 1
-                            
-                        Button:
-                            text: "Save"
-                            size_hint_x: None
-                            width: '55dp'
-                            background_normal: ''
-                            background_color: 0, 0, 0, 0
-                            color: 1, 1, 1, 1
-                            on_release: root.open_save_ui()
-                            
-                        Button:
-                            text: "Load"
-                            size_hint_x: None
-                            width: '55dp'
-                            background_normal: ''
-                            background_color: 0, 0, 0, 0
-                            color: 1, 1, 1, 1
-                            on_release: root.open_load_ui()
-                            
-                        Button:
-                            text: "Auto" if not root.auto_mode else "[b]Auto[/b]"
-                            markup: True
-                            size_hint_x: None
-                            width: '55dp'
-                            background_normal: ''
-                            background_color: 0, 0, 0, 0
-                            color: (0.2, 0.8, 0.2, 1) if root.auto_mode else (1, 1, 1, 1)
-                            on_release: root.toggle_auto()
+        FloatLayout:
+            id: default_ui_layer
+            opacity: root.ui_opacity
+            disabled: root.ui_hidden
+            size_hint: 1, 1
 
-                        Button:
-                            text: "Log"
-                            size_hint_x: None
-                            width: '55dp'
-                            background_normal: ''
-                            background_color: 0, 0, 0, 0
-                            color: 1, 1, 1, 1
-                            on_release: root.open_history()
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint: 1, None
+                height: '130dp'
+                pos_hint: {'x': 0, 'y': 0}
+                padding: ['15dp', '5dp', '15dp', '10dp']
+                
+                canvas.before:
+                    Color:
+                        rgba: 0, 0, 0, 0.85
+                    Rectangle:
+                        pos: self.x, self.y
+                        size: self.width, self.height - dp(30)
+                    Color:
+                        rgba: 0, 0, 0, 0.7
+                    Rectangle:
+                        pos: self.x, self.y + self.height - dp(30)
+                        size: self.width, dp(3)
+                    Color:
+                        rgba: 0, 0, 0, 0.55
+                    Rectangle:
+                        pos: self.x, self.y + self.height - dp(27)
+                        size: self.width, dp(3)
+                    Color:
+                        rgba: 0, 0, 0, 0.4
+                    Rectangle:
+                        pos: self.x, self.y + self.height - dp(24)
+                        size: self.width, dp(3)
+                    Color:
+                        rgba: 0, 0, 0, 0.28
+                    Rectangle:
+                        pos: self.x, self.y + self.height - dp(21)
+                        size: self.width, dp(3)
+                    Color:
+                        rgba: 0, 0, 0, 0.18
+                    Rectangle:
+                        pos: self.x, self.y + self.height - dp(18)
+                        size: self.width, dp(3)
+                    Color:
+                        rgba: 0, 0, 0, 0.1
+                    Rectangle:
+                        pos: self.x, self.y + self.height - dp(15)
+                        size: self.width, dp(3)
+                    Color:
+                        rgba: 0, 0, 0, 0.05
+                    Rectangle:
+                        pos: self.x, self.y + self.height - dp(12)
+                        size: self.width, dp(3)
+                    Color:
+                        rgba: 0, 0, 0, 0.02
+                    Rectangle:
+                        pos: self.x, self.y + self.height - dp(9)
+                        size: self.width, dp(3)
+                    Color:
+                        rgba: 0, 0, 0, 0.01
+                    Rectangle:
+                        pos: self.x, self.y + self.height - dp(6)
+                        size: self.width, dp(3)
 
-                        Button:
-                            text: "Hide"
-                            size_hint_x: None
-                            width: '55dp'
-                            background_normal: ''
-                            background_color: 0, 0, 0, 0
-                            color: 1, 1, 1, 1
-                            on_release: root.hide_ui()
+                Label:
+                    text: root.char_name
+                    font_name: './assets/jpfont.ttf'
+                    font_size: '19sp'
+                    bold: True
+                    outline_width: 2
+                    outline_color: 0, 0, 0, 1
+                    
+                    
+                    size_hint: None, None
+                    height: '25dp'
+                    width: self.texture_size[0]
+                    
+                    halign: 'left'
+                    valign: 'middle'
+                    color: 1, 0.85, 0.3, 1
 
-                        Button:
-                            text: "Set"
-                            size_hint_x: None
-                            width: '55dp'
-                            background_normal: ''
-                            background_color: 0, 0, 0, 0
-                            color: 1, 1, 1, 1
-                            on_release: root.open_in_game_settings()
-                            
-                        Button:
-                            text: "Exit"
-                            size_hint_x: None
-                            width: '60dp'
-                            background_normal: ''
-                            background_color: 0, 0, 0, 0
-                            color: 0.9, 0.4, 0.4, 1
-                            on_release: root.exit_to_menu()
-                             
-                        Widget:
-                            size_hint_x: 1
+                ScrollView:
+                    do_scroll_x: False
+                    do_scroll_y: True
+                    
+                    Label:
+                        text: root.dialogue_text
+                        font_name: './assets/jpfont.ttf'
+                        font_size: '16sp'
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
+                        valign: 'top'
+                        text_size: self.width, None
+                        color: 1, 1, 1, 1
 
-                    BoxLayout:
-                        orientation: 'vertical'
-                        size_hint: 0.94, None
-                        height: self.minimum_height 
-                        pos_hint: {'center_x': 0.5, 'y': 0.04}
-                        spacing: '0dp'
-                        opacity: 1 if root.dialogue_text else 0
-
-                        BoxLayout:
-                            size_hint: (None, None)
-                            width: '140dp' if root.char_name != '' else '0dp'
-                            height: '28dp' if root.char_name != '' else '0dp'
-                            opacity: 1 if root.char_name != '' else 0
-                            
-                            Label:
-                                text: root.char_name
-                                font_size: '15sp' if root.char_name != '' else 0
-                                font_name: './assets/jpfont.ttf'
-                                bold: True
-                                halign: 'left'
-                                padding_x: '12dp'
-                                valign: 'middle'
-                                text_size: self.size
-                                color: 0.98, 0.95, 0.85, 1
-                                outline_color: 0, 0, 0, 1
-                                outline_width: 3
-
-                        BoxLayout:
-                            size_hint_y: None
-                            height: '85dp'
-                            padding: ['15dp', '10dp', '15dp', '10dp']
-                            
-                            canvas.before:
-                                Color:
-                                    rgba: 0.08, 0.08, 0.09, 0.8
-                                Rectangle:
-                                    pos: self.pos
-                                    size: self.size
-                                    
-                            Label:
-                                text: root.dialogue_text
-                                font_size: '17sp'
-                                font_name: './assets/jpfont.ttf'
-                                halign: 'left'
-                                valign: 'top'
-                                text_size: self.size
-                                color: 0.95, 0.95, 0.95, 1
-
-                    BoxLayout:
-                        orientation: 'vertical'
-                        size_hint: 0.65, None
-                        height: self.minimum_height
-                        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-                        spacing: '12dp'
-                        opacity: 1 if root.is_choosing else 0
-                        disabled: not root.is_choosing
-                        
-                        Button:
-                            text: root.choices[0] if len(root.choices) > 0 else ""
-                            font_name: './assets/jpfont.ttf'
-                            size_hint_y: None
-                            height: '48dp'
-                            background_normal: ''
-                            background_color: 0.09, 0.09, 0.1, 0.95
-                            color: 1, 1, 1, 1
-                            on_release: root.select_choice(1)
-                            
-                        Button:
-                            text: root.choices[1] if len(root.choices) > 1 else ""
-                            font_name: './assets/jpfont.ttf'
-                            size_hint_y: None
-                            height: '48dp'
-                            background_normal: ''
-                            background_color: 0.09, 0.09, 0.1, 0.95
-                            color: 1, 1, 1, 1
-                            on_release: root.select_choice(2)
-
-                FloatLayout:
-                    id: custom_ui_layer
-                    size_hint: 1, 1
+        FloatLayout:
+            id: custom_ui_layer
+            size_hint: 1, 1
 
         Button:
+            background_normal: ''
+            background_disabled_normal: ''
+            background_color: 0, 0, 0, 0
+            size_hint: 1, 1
+            disabled: root.is_choosing or root.ui_hidden
+            on_release: 
+                root.close_drawer()
+                root.next_line()
+
+        BoxLayout:
+            id: choice_layer
+            orientation: 'vertical'
+            size_hint: 0.8, None
+            height: self.minimum_height
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+            opacity: 1 if root.is_choosing else 0
+            disabled: not root.is_choosing
+            spacing: '10dp'
+            
+            Button:
+                text: root.choices[0] if len(root.choices) > 0 else ""
+                font_name: './assets/jpfont.ttf'
+                size_hint_y: None
+                height: '48dp'
+                background_normal: ''
+                background_color: 0, 0, 0, 0
+                color: 1, 1, 1, 1
+                on_release: root.select_choice(1)
+                canvas.before:
+                    Color:
+                        rgba: (0.09, 0.09, 0.1, 0.95) if self.state == 'normal' else (0.18, 0.18, 0.2, 0.95)
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(15)]
+            
+            Button:
+                text: root.choices[1] if len(root.choices) > 1 else ""
+                font_name: './assets/jpfont.ttf'
+                size_hint_y: None
+                height: '48dp'
+                background_normal: ''
+                background_color: 0, 0, 0, 0
+                color: 1, 1, 1, 1
+                on_release: root.select_choice(2)
+                canvas.before:
+                    Color:
+                        rgba: (0.09, 0.09, 0.1, 0.95) if self.state == 'normal' else (0.18, 0.18, 0.2, 0.95)
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(15)]
+
+        FloatLayout:
+            opacity: root.ui_opacity
+            disabled: root.ui_hidden
+            size_hint: 1, 1
+
+            BoxLayout:
+                id: side_drawer
+                orientation: 'vertical'
+                size_hint: 0.35, 1 
+                pos_hint: {'x': 1.0, 'y': 0.0} 
+                canvas.before:
+                    Color:
+                        rgba: 0.05, 0.05, 0.05, 0.98
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+
+                ScrollView:
+                    do_scroll_x: False
+                    do_scroll_y: True
+                    
+                    BoxLayout:
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height
+                        padding: '15dp'
+                        spacing: '12dp'
+
+                        Label:
+                            text: "MENU"
+                            font_name: './assets/jpfont.ttf'
+                            font_size: '22sp'
+                            bold: True
+                            size_hint_y: None
+                            height: '50dp'
+                            color: 1, 1, 1, 1
+
+                        DrawerButton:
+                            text: "Save Game"
+                            on_release: 
+                                root.close_drawer()
+                                root.open_save_ui()
+                        
+                        DrawerButton:
+                            text: "Load Game"
+                            on_release: 
+                                root.close_drawer()
+                                root.open_load_ui()
+                        
+                        DrawerButton:
+                            text: "Message Log"
+                            on_release: 
+                                root.close_drawer()
+                                root.open_history()
+                        
+                        DrawerButton:
+                            text: "Auto-Play < ON >" if root.auto_mode else "Auto-Play < OFF >"
+                          
+                            on_release: 
+                                root.toggle_auto()
+                        
+                        DrawerButton:
+                            text: "In-Game Settings"
+                            on_release: 
+                                root.close_drawer()
+                                root.open_in_game_settings()
+                        
+                        DrawerButton:
+                            text: "Hide UI"
+                            on_release: 
+                                root.close_drawer()
+                                root.hide_ui()
+                        
+                        Widget:
+                            size_hint_y: None
+                            height: '30dp'
+
+                        DrawerButton:
+                            text: "Quit to Menu"
+                            color: 1, 0.4, 0.4, 1 
+                            on_release: 
+                                root.close_drawer()
+                                root.exit_to_menu()
+
+            Button:
+                text: ">" if root.drawer_open else "<"
+                font_name: './assets/jpfont.ttf'
+                font_size: '24sp'
+                size_hint: None, None
+                size: '45dp', '45dp'
+                x: side_drawer.x - self.width
+                top: side_drawer.top - dp(10)
+                background_normal: ''
+                background_color: 0, 0, 0, 0
+                on_release: root.toggle_drawer()
+                canvas.before:
+                    Color:
+                        rgba: (0.05, 0.05, 0.05, 0.95) if self.state == 'normal' else (0.1, 0.1, 0.1, 0.95)
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [dp(10), 0, 0, dp(10)]
+
+        Button:
+            background_normal: ''
             background_color: 0, 0, 0, 0
             opacity: 0
             size_hint: (1, 1) if root.ui_hidden else (None, None)
