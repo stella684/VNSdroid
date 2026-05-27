@@ -33,6 +33,7 @@ class VNInterpreter(BoxLayout):
     
     auto_mode = BooleanProperty(False)
     ui_hidden = BooleanProperty(False)
+    drawer_open = BooleanProperty(False)
     
     auto_speed = NumericProperty(2.0)
     bg_keep_ratio = BooleanProperty(True)
@@ -54,7 +55,7 @@ class VNInterpreter(BoxLayout):
         self.dialogue_history = [] 
         
         self.active_sprites = {} 
-        self.active_sprites_info = {} # Dict of {'char_id': {'file': filename, 'pos': position}}
+        self.active_sprites_info = {}
         
         self.typewriter_event = None
         self.full_text = ""
@@ -154,7 +155,11 @@ class VNInterpreter(BoxLayout):
         
         self.auto_mode = False
         self.ui_hidden = False
+        self.drawer_open = False
         self.ui_opacity = 1.0
+        
+        if 'side_drawer' in self.ids:
+            self.ids.side_drawer.pos_hint = {'x': 1.0, 'y': 0.0}
 
         if self.auto_event: self.auto_event.cancel()
         if self.typewriter_event: self.typewriter_event.cancel()
@@ -315,13 +320,21 @@ class VNInterpreter(BoxLayout):
             self.char_name, self.full_text = name.strip(), speech.strip()
         else: self.full_text = text
 
+        self.char_name = self.char_name.strip().strip('"').strip()
+
         self.dialogue_text = ""
         self.type_index = 0
         if self.typewriter_event: self.typewriter_event.cancel()
 
         if self.full_text and text not in ["~", "!"]:
-            formatted_name = f"[b][color=F2D966]{self.char_name}[/color][/b]\n" if self.char_name.strip() else ""
-            self.dialogue_history.append(formatted_name + self.full_text)
+            formatted_name = f"[b][color=F2D966]{self.char_name}[/color][/b]\n" if self.char_name else ""
+            
+          
+            self.dialogue_history.append({
+                "scr": getattr(self.engine, 'current_script_name', ''),
+                "text": formatted_name + self.full_text
+            })
+            
             self.typewriter_event = Clock.schedule_interval(self._type_next_char, 0.02)
         else:
             self.dialogue_text = self.full_text
@@ -375,18 +388,15 @@ class VNInterpreter(BoxLayout):
             self.run_next_command()
             return
 
-        # Extract base identifier name (e.g., "nova_smile.png" -> "nova")
         char_id = filename.split('_')[0].split('.')[0].lower()
 
-        # 1. CHARACTER IS ALREADY ON SCREEN -> SWAP EXPRESSION ONLY (LOCKED POSITION)
         if char_id in self.active_sprites:
             img = self.active_sprites[char_id]
-            img.source = filepath # Updates image instantly in place
+            img.source = filepath
             self.active_sprites_info[char_id]['file'] = filename
             self.run_next_command()
             return
 
-        # 2. NEW CHARACTER -> CONFIGURE SIZE & RATIO
         img = KivyImage(source=filepath, allow_stretch=True, keep_ratio=True)
         img.size_hint = (None, 0.95)
         def scale_img(instance, *args_list):
@@ -394,7 +404,6 @@ class VNInterpreter(BoxLayout):
                 instance.width = instance.height * (instance.texture_size[0] / instance.texture_size[1])
         img.bind(height=scale_img, texture_size=scale_img)
 
-        # Parse position script argument if provided
         pos = "center"
         if len(p) >= 2:
             raw_pos = p[1].lower()
@@ -404,25 +413,19 @@ class VNInterpreter(BoxLayout):
 
         anim_type = p[2].lower() if len(p) >= 3 else "fade"
 
-        # 3. AUTO POSITION FOR DUAL SPRITES
         active_chars = list(self.active_sprites.keys())
         if len(active_chars) == 1:
-            # If 1 character is already there, force the new one to the opposite side
             existing_char = active_chars[0]
             existing_pos = self.active_sprites_info[existing_char]['pos']
             
-            if existing_pos == 'left':
-                pos = 'right'
-            elif existing_pos == 'right':
-                pos = 'left'
+            if existing_pos == 'left': pos = 'right'
+            elif existing_pos == 'right': pos = 'left'
             else:
-                # If existing is stuck in absolute center, slide them left, set new to right
                 self.active_sprites_info[existing_char]['pos'] = 'left'
                 existing_img = self.active_sprites[existing_char]
                 existing_img.pos_hint = {'center_x': 0.25, 'y': 0.0}
                 pos = 'right'
 
-        # Apply locked symmetrical positioning
         if pos == 'left': img.pos_hint = {'center_x': 0.25, 'y': 0.0}
         elif pos == 'right': img.pos_hint = {'center_x': 0.75, 'y': 0.0}
         else: img.pos_hint = {'center_x': 0.5, 'y': 0.0}
@@ -431,7 +434,6 @@ class VNInterpreter(BoxLayout):
         self.active_sprites[char_id] = img
         self.active_sprites_info[char_id] = {'file': filename, 'pos': pos}
 
-        # 4. ENTRY FADE ANIMATION ONLY
         if anim_type == "fade":
             img.opacity = 0
             Animation(opacity=1.0, duration=0.3).start(img)
@@ -489,6 +491,20 @@ class VNInterpreter(BoxLayout):
                 if is_music: self.current_music = snd
                 else: self.current_sound = snd
 
+    def toggle_drawer(self):
+        if 'side_drawer' not in self.ids: return
+        drawer = self.ids.side_drawer
+        self.drawer_open = not self.drawer_open
+        
+        target_x = 0.65 if self.drawer_open else 1.0 
+        
+        anim = Animation(pos_hint={'x': target_x, 'y': 0.0}, duration=0.25, t='out_quad')
+        anim.start(drawer)
+
+    def close_drawer(self):
+        if self.drawer_open:
+            self.toggle_drawer()
+
     def next_line(self):
         if self.ui_hidden:
             self.unhide_ui()
@@ -529,96 +545,288 @@ class VNInterpreter(BoxLayout):
     def open_load_ui(self):
         SaveLoadPopup(self, mode='load').open()
 
+ 
     def open_history(self):
+        current_scr = getattr(self.engine, 'current_script_name', '')
+        
+        filtered_history = [item['text'] for item in self.dialogue_history if isinstance(item, dict) and item.get('scr') == current_scr]
+        
+        chunk_size = 15
+        total_items = len(filtered_history)
+        max_pages = max(1, (total_items + chunk_size - 1) // chunk_size)
+        
+        self._log_page = max_pages - 1
+        
         content = BoxLayout(orientation='vertical', padding='10dp', spacing='10dp')
+        
         scroll = ScrollView(do_scroll_x=False, do_scroll_y=True)
         grid = BoxLayout(orientation='vertical', size_hint_y=None, spacing='15dp', padding='5dp')
         grid.bind(minimum_height=grid.setter('height'))
-
-        for entry in self.dialogue_history:
-            lbl = Label(text=entry, markup=True, font_name='./assets/jpfont.ttf', font_size='16sp', size_hint_y=None, halign='left', valign='top', color=(0.95, 0.95, 0.95, 1))
-            lbl.bind(width=lambda s, w: s.setter('text_size')(s, (w, None)))
-            lbl.bind(texture_size=lambda s, t: s.setter('height')(s, t[1]))
-            grid.add_widget(lbl)
-
         scroll.add_widget(grid)
         content.add_widget(scroll)
 
-        btn = Button(text="Close Log", size_hint_y=None, height='50dp', font_name='./assets/jpfont.ttf', background_normal='', background_color=(0.2, 0.2, 0.22, 1))
-        content.add_widget(btn)
+        nav_bar = BoxLayout(orientation='horizontal', size_hint_y=None, height='50dp', spacing='10dp')
+        
+        prev_btn = Button(text="<", font_name='./assets/jpfont.ttf', font_size='26sp', background_normal='', background_color=(0,0,0,0), size_hint_x=0.2)
+        next_btn = Button(text=">", font_name='./assets/jpfont.ttf', font_size='26sp', background_normal='', background_color=(0,0,0,0), size_hint_x=0.2)
+        close_btn = Button(text="Close Log", font_name='./assets/jpfont.ttf', background_normal='', background_color=(0.2, 0.2, 0.22, 1), size_hint_x=0.6)
+        
+        nav_bar.add_widget(prev_btn)
+        nav_bar.add_widget(close_btn)
+        nav_bar.add_widget(next_btn)
+        
+        content.add_widget(nav_bar)
 
         popup = Popup(title="Message Log", title_font='./assets/jpfont.ttf', content=content, size_hint=(0.85, 0.85), background_color=(0.1, 0.1, 0.1, 0.95), separator_color=(0.4, 0.4, 0.4, 1))
-        btn.bind(on_release=popup.dismiss)
+
+        def render_page(*args):
+            grid.clear_widgets()
+            start_idx = self._log_page * chunk_size
+            end_idx = start_idx + chunk_size
+            
+            page_data = filtered_history[start_idx:end_idx]
+            for text in page_data:
+                lbl = Label(text=text, markup=True, font_name='./assets/jpfont.ttf', font_size='16sp', size_hint_y=None, halign='left', valign='top', color=(0.95, 0.95, 0.95, 1))
+                lbl.bind(width=lambda s, w: s.setter('text_size')(s, (w, None)))
+                lbl.bind(texture_size=lambda s, t: s.setter('height')(s, t[1]))
+                grid.add_widget(lbl)
+
+            prev_btn.opacity = 1.0 if self._log_page > 0 else 0.3
+            next_btn.opacity = 1.0 if self._log_page < max_pages - 1 else 0.3
+
+            Clock.schedule_once(lambda dt: setattr(scroll, 'scroll_y', 0.0), 0.1)
+
+        def go_prev(*args):
+            if self._log_page > 0:
+                self._log_page -= 1
+                render_page()
+
+        def go_next(*args):
+            if self._log_page < max_pages - 1:
+                self._log_page += 1
+                render_page()
+
+        prev_btn.bind(on_release=go_prev)
+        next_btn.bind(on_release=go_next)
+        close_btn.bind(on_release=popup.dismiss)
+        
+        render_page()
         popup.open()
 
     def open_in_game_settings(self):
-        content = BoxLayout(orientation='vertical', padding='15dp', spacing='10dp')
-        scroll = ScrollView(do_scroll_x=False, do_scroll_y=True)
-        scroll_layout = BoxLayout(orientation='vertical', size_hint_y=None, spacing='12dp')
-        scroll_layout.bind(minimum_height=scroll_layout.setter('height'))
+        disp_text = "Fixed" if self.bg_keep_ratio else "Full"
         
-        speed_box = BoxLayout(orientation='horizontal', size_hint_y=None, height='40dp', spacing='10dp')
-        speed_box.add_widget(Label(text="Auto Speed (s):", font_name='./assets/jpfont.ttf', halign='left', size_hint_x=0.6))
-        speed_input = TextInput(text=str(self.auto_speed), font_name='./assets/jpfont.ttf', input_filter='float', multiline=False, background_color=(0.1, 0.1, 0.1, 1), foreground_color=(1, 1, 1, 1), size_hint_x=0.4)
-        speed_box.add_widget(speed_input)
-        scroll_layout.add_widget(speed_box)
+        kv_layout = f'''
+BoxLayout:
+    orientation: 'vertical'
+    padding: '20dp'
+    spacing: '15dp'
+    
+    ScrollView:
+        do_scroll_x: False
+        do_scroll_y: True
+        
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: self.minimum_height
+            spacing: '16dp'
+            
+            BoxLayout:
+                size_hint_y: None
+                height: '45dp'
+                spacing: '10dp'
+                Label:
+                    text: "Auto Speed (s):"
+                    font_name: './assets/jpfont.ttf'
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                    size_hint_x: 0.6
+                
+                AnchorLayout:
+                    size_hint_x: 0.4
+                    anchor_y: 'center'
+                    TextInput:
+                        id: speed_input
+                        text: "{self.auto_speed}"
+                        font_name: './assets/jpfont.ttf'
+                        input_filter: 'float'
+                        multiline: False
+                        size_hint_y: None
+                        height: '36dp'
+                        background_normal: ''
+                        background_color: 0.12, 0.12, 0.12, 1
+                        foreground_color: 1, 1, 1, 1
+                        halign: 'center'
+                        padding: [0, (self.height - self.line_height) / 2, 0, 0]
 
-        disp_box = BoxLayout(orientation='horizontal', size_hint_y=None, height='40dp', spacing='10dp')
-        disp_box.add_widget(Label(text="Display Mode:", font_name='./assets/jpfont.ttf', halign='left', size_hint_x=0.6))
-        disp_btn = Button(text="Fixed" if self.bg_keep_ratio else "Full", font_name='./assets/jpfont.ttf', background_normal='', background_color=(0.15, 0.15, 0.15, 1), size_hint_x=0.4)
-        def toggle_disp(instance): instance.text = "Full" if instance.text == "Fixed" else "Fixed"
-        disp_btn.bind(on_release=toggle_disp)
-        disp_box.add_widget(disp_btn)
-        scroll_layout.add_widget(disp_box)
+            BoxLayout:
+                size_hint_y: None
+                height: '45dp'
+                spacing: '10dp'
+                Label:
+                    text: "Display Mode:"
+                    font_name: './assets/jpfont.ttf'
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                    size_hint_x: 0.6
+                Button:
+                    id: disp_btn
+                    text: "{disp_text}"
+                    font_name: './assets/jpfont.ttf'
+                    background_normal: ''
+                    background_color: 0, 0, 0, 0
+                    size_hint_x: 0.4
+                    on_release: self.text = "Full" if self.text == "Fixed" else "Fixed"
+                    canvas.before:
+                        Color:
+                            rgba: (0.15, 0.15, 0.15, 1) if self.state == 'normal' else (0.25, 0.25, 0.25, 1)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(15)]
+
+            BoxLayout:
+                size_hint_y: None
+                height: '45dp'
+                spacing: '10dp'
+                Label:
+                    text: "Master Vol:"
+                    font_name: './assets/jpfont.ttf'
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                    size_hint_x: 0.4
+                Slider:
+                    id: m_slider
+                    min: 0.0
+                    max: 1.0
+                    value: {self.master_vol}
+                    size_hint_x: 0.6
+                    cursor_image: ''
+                    cursor_size: (0, 0)
+                    value_track: True
+                    value_track_color: 1, 1, 1, 1
+                    canvas.after:
+                        Color:
+                            rgba: 1, 1, 1, 1
+                        Ellipse:
+                            pos: self.value_pos[0] - dp(10), self.center_y - dp(10)
+                            size: dp(20), dp(20)
+
+            BoxLayout:
+                size_hint_y: None
+                height: '45dp'
+                spacing: '10dp'
+                Label:
+                    text: "BGM Vol:"
+                    font_name: './assets/jpfont.ttf'
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                    size_hint_x: 0.4
+                Slider:
+                    id: bgm_slider
+                    min: 0.0
+                    max: 1.0
+                    value: {self.bgm_vol}
+                    size_hint_x: 0.6
+                    cursor_image: ''
+                    cursor_size: (0, 0)
+                    value_track: True
+                    value_track_color: 1, 1, 1, 1
+                    canvas.after:
+                        Color:
+                            rgba: 1, 1, 1, 1
+                        Ellipse:
+                            pos: self.value_pos[0] - dp(10), self.center_y - dp(10)
+                            size: dp(20), dp(20)
+
+            BoxLayout:
+                size_hint_y: None
+                height: '45dp'
+                spacing: '10dp'
+                Label:
+                    text: "SFX Vol:"
+                    font_name: './assets/jpfont.ttf'
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                    size_hint_x: 0.4
+                Slider:
+                    id: sfx_slider
+                    min: 0.0
+                    max: 1.0
+                    value: {self.sfx_vol}
+                    size_hint_x: 0.6
+                    cursor_image: ''
+                    cursor_size: (0, 0)
+                    value_track: True
+                    value_track_color: 1, 1, 1, 1
+                    canvas.after:
+                        Color:
+                            rgba: 1, 1, 1, 1
+                        Ellipse:
+                            pos: self.value_pos[0] - dp(10), self.center_y - dp(10)
+                            size: dp(20), dp(20)
+
+    BoxLayout:
+        orientation: 'horizontal'
+        spacing: '15dp'
+        size_hint_y: None
+        height: '50dp'
         
-        m_box = BoxLayout(orientation='horizontal', size_hint_y=None, height='40dp', spacing='10dp')
-        m_box.add_widget(Label(text="Master Vol:", font_name='./assets/jpfont.ttf', size_hint_x=0.4))
-        m_slider = Slider(min=0.0, max=1.0, value=self.master_vol, size_hint_x=0.6)
-        m_box.add_widget(m_slider)
-        scroll_layout.add_widget(m_box)
-        
-        bgm_box = BoxLayout(orientation='horizontal', size_hint_y=None, height='40dp', spacing='10dp')
-        bgm_box.add_widget(Label(text="BGM Vol:", font_name='./assets/jpfont.ttf', size_hint_x=0.4))
-        bgm_slider = Slider(min=0.0, max=1.0, value=self.bgm_vol, size_hint_x=0.6)
-        bgm_box.add_widget(bgm_slider)
-        scroll_layout.add_widget(bgm_box)
-        
-        sfx_box = BoxLayout(orientation='horizontal', size_hint_y=None, height='40dp', spacing='10dp')
-        sfx_box.add_widget(Label(text="SFX Vol:", font_name='./assets/jpfont.ttf', size_hint_x=0.4))
-        sfx_slider = Slider(min=0.0, max=1.0, value=self.sfx_vol, size_hint_x=0.6)
-        sfx_box.add_widget(sfx_slider)
-        scroll_layout.add_widget(sfx_box)
-        
-        scroll.add_widget(scroll_layout)
-        content.add_widget(scroll)
-        
-        btn_layout = BoxLayout(orientation='horizontal', spacing='10dp', size_hint_y=None, height='45dp')
-        close_btn = Button(text="Cancel", font_name='./assets/jpfont.ttf', background_color=(0.25, 0.25, 0.28, 1))
-        apply_btn = Button(text="Save Settings", font_name='./assets/jpfont.ttf', background_color=(0.2, 0.5, 0.2, 1))
-        
-        btn_layout.add_widget(close_btn)
-        btn_layout.add_widget(apply_btn)
-        content.add_widget(btn_layout)
+        Button:
+            id: close_btn
+            text: "Cancel"
+            font_name: './assets/jpfont.ttf'
+            background_normal: ''
+            background_color: 0, 0, 0, 0
+            canvas.before:
+                Color:
+                    rgba: (0.25, 0.25, 0.28, 1) if self.state == 'normal' else (0.35, 0.35, 0.38, 1)
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(15)]
+                    
+        Button:
+            id: apply_btn
+            text: "Save Settings"
+            font_name: './assets/jpfont.ttf'
+            background_normal: ''
+            background_color: 0, 0, 0, 0
+            canvas.before:
+                Color:
+                    rgba: (0.2, 0.5, 0.2, 1) if self.state == 'normal' else (0.3, 0.6, 0.3, 1)
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [dp(15)]
+'''
+        content = Builder.load_string(kv_layout)
         
         popup = Popup(
             title="In-Game Settings", 
             title_font='./assets/jpfont.ttf', 
             content=content, 
-            size_hint=(0.6, 0.75),
-            background_color=(0.1, 0.1, 0.1, 0.95), 
-            separator_color=(0.4, 0.4, 0.4, 1)
+            size_hint=(0.7, 0.85),
+            background_color=(0.08, 0.08, 0.08, 0.98), 
+            separator_color=(0.3, 0.3, 0.3, 1)
         )
         
-        close_btn.bind(on_release=popup.dismiss)
+        content.ids.close_btn.bind(on_release=popup.dismiss)
         
         def apply_settings(instance):
-            try: self.auto_speed = float(speed_input.text)
+            try: self.auto_speed = float(content.ids.speed_input.text)
             except ValueError: pass
             
-            self.bg_keep_ratio = (disp_btn.text == "Fixed")
-            self.master_vol = m_slider.value
-            self.bgm_vol = bgm_slider.value
-            self.sfx_vol = sfx_slider.value
+            self.bg_keep_ratio = (content.ids.disp_btn.text == "Fixed")
+            self.master_vol = content.ids.m_slider.value
+            self.bgm_vol = content.ids.bgm_slider.value
+            self.sfx_vol = content.ids.sfx_slider.value
             
             if self.current_music:
                 self.current_music.volume = self.master_vol * self.bgm_vol
@@ -628,7 +836,7 @@ class VNInterpreter(BoxLayout):
                 os.makedirs(os.path.dirname(config_file), exist_ok=True)
                 with open(config_file, 'w', encoding='utf-8') as f:
                     f.write(f"auto_speed={self.auto_speed}\n")
-                    f.write(f"display_mode={disp_btn.text}\n")
+                    f.write(f"display_mode={content.ids.disp_btn.text}\n")
                     f.write(f"master_vol={self.master_vol}\n")
                     f.write(f"bgm_vol={self.bgm_vol}\n")
                     f.write(f"sfx_vol={self.sfx_vol}\n")
@@ -636,7 +844,7 @@ class VNInterpreter(BoxLayout):
                 Logger.error(f"Settings file saving issue: {e}")
             popup.dismiss()
             
-        apply_btn.bind(on_release=apply_settings)
+        content.ids.apply_btn.bind(on_release=apply_settings)
         popup.open()
 
     def exit_to_menu(self):
@@ -689,7 +897,14 @@ class VNInterpreter(BoxLayout):
 
         self.current_game_folder = data.get('game', '')
         self._apply_custom_ui()
-        self.dialogue_history = data.get('history', [])
+        
+        raw_history = data.get('history', [])
+        self.dialogue_history = []
+        for item in raw_history:
+            if isinstance(item, str):
+                self.dialogue_history.append({"scr": data.get('script', ''), "text": item})
+            else:
+                self.dialogue_history.append(item)
 
         self.engine.variables = data.get('vars', {})
         self.char_name = data.get('char_name', '')

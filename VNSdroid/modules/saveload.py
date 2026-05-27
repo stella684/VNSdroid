@@ -10,12 +10,14 @@ from kivy.logger import Logger
 from kivy.properties import StringProperty
 from kivy.app import App
 from kivy.factory import Factory
+from kivy.clock import Clock
 
 class SaveLoadPopup(ModalView):
     mode = StringProperty('save')
 
     def __init__(self, interpreter=None, mode='save', **kwargs):
-        super().__init__(mode=mode, **kwargs)
+        super().__init__(**kwargs)
+        self.mode = mode
         self.interpreter = interpreter
         
         game_folder_name = "default"
@@ -36,44 +38,39 @@ class SaveLoadPopup(ModalView):
         container = self.ids.slot_container
         container.clear_widgets()
         
-        for i in range(1, 21):
+        for i in range(1, 41):
             filepath = os.path.join(self.save_dir, f'slot_{i}.json')
+            thumb_path = os.path.join(self.save_dir, f'slot_{i}.png')
             
-            slot_name = ""
-            btn_text = ""
-            bg_file_name = ""
+            is_empty = True
+            slot_text = "EMPTY"
+            time_text = "0:00"
+            thumb_src = ""
             
             if os.path.exists(filepath):
                 try:
                     with open(filepath, 'r', encoding='utf-8') as f:
                         save_data = json.load(f)
-                    slot_name = save_data.get('slot_name', '')
-                    bg_file_name = save_data.get('bg', '')
-                except Exception:
-                    slot_name = ''
                     
-                mtime = os.path.getmtime(filepath)
-                timestamp = datetime.fromtimestamp(mtime).strftime('%Y-%m-%d  %H:%M')
-
-                if slot_name:
-                    btn_text = f"Slot {i}: {slot_name}\n[size=14sp][color=AAAAAA]{timestamp}[/color][/size]"
-                else:
-                    btn_text = f"Slot {i}\n[size=14sp][color=AAAAAA]{timestamp}[/color][/size]"
-            else:
-                btn_text = f"Slot {i}\n[size=14sp][color=555555]--- Empty ---[/color][/size]"
-                
-            # Live resolve asset path instead of loading written png thumbnails from file storage
-            thumb_src = './assets/icon.png'
-            if bg_file_name and self.interpreter:
-                resolved_bg = self.interpreter.get_asset('background', bg_file_name)
-                if resolved_bg and os.path.exists(resolved_bg):
-                    thumb_src = resolved_bg
+                    slot_name = save_data.get('slot_name', f'Slot {i}')
+                    is_empty = False
+                    slot_text = f"Slot {i}: {slot_name}"
+                    
+                    mtime = os.path.getmtime(filepath)
+                    dt = datetime.fromtimestamp(mtime)
+                    time_text = dt.strftime('%H:%M')
+                    
+                    if os.path.exists(thumb_path):
+                        thumb_src = thumb_path
+                except Exception:
+                    pass
 
             item = Factory.SlotItem()
             item.slot_num = i
-            item.popup_ref = self
             item.thumb_source = thumb_src
-            item.slot_text = btn_text
+            item.slot_text = slot_text
+            item.time_text = time_text
+            item.is_empty = is_empty
             
             item.bind(on_release=lambda instance, s=i: self.select_slot(s))
             container.add_widget(item)
@@ -104,21 +101,23 @@ class SaveLoadPopup(ModalView):
             self.dismiss()
 
     def prompt_save_name(self, slot_num, filepath):
-        content = BoxLayout(orientation='vertical', spacing='10dp', padding='10dp')
+        content = BoxLayout(orientation='vertical', spacing='12dp', padding='12dp')
         
         name_input = TextInput(
-            hint_text="Enter custom save name (optional)...", 
+            hint_text="Enter save name...", 
             multiline=False, 
             size_hint_y=None, 
             height='45dp',
-            background_color=(0.1, 0.1, 0.1, 1),
+            background_color=(0.15, 0.15, 0.18, 1),
             foreground_color=(1, 1, 1, 1),
+            cursor_color=(1, 1, 1, 1),
             font_name='./assets/jpfont.ttf'
         )
         
         btn_layout = BoxLayout(orientation='horizontal', spacing='10dp', size_hint_y=None, height='45dp')
-        cancel_btn = Button(text="Cancel", font_name='./assets/jpfont.ttf', background_normal='', background_color=(0.2, 0.2, 0.2, 1))
-        save_btn = Button(text="Save", font_name='./assets/jpfont.ttf', background_normal='', background_color=(0.2, 0.6, 0.2, 1))
+        
+        cancel_btn = Factory.MenuDialogButton(text="Cancel")
+        save_btn = Factory.MenuDialogButton(text="Save")
         
         btn_layout.add_widget(cancel_btn)
         btn_layout.add_widget(save_btn)
@@ -127,27 +126,33 @@ class SaveLoadPopup(ModalView):
         content.add_widget(btn_layout)
         
         name_popup = Popup(
-            title=f"Name for Slot {slot_num}",
+            title=f"Save to Slot {slot_num}",
             title_font='./assets/jpfont.ttf',
             content=content,
             size_hint=(None, None),
-            size=('320dp', '160dp'),
+            size=('320dp', '180dp'),
             auto_dismiss=True,
-            background_color=(0.1, 0.1, 0.1, 0.95),
-            separator_color=(0.4, 0.4, 0.4, 1)
+            background_color=(0.11, 0.11, 0.13, 0.95),
+            title_align='center',
+            separator_color=(0.3, 0.3, 0.35, 1)
         )
         
         def execute_save(instance):
             name_popup.dismiss()
             if self.interpreter:
                 data = self.interpreter.get_save_state()
-                data['slot_name'] = name_input.text.strip()
+                data['slot_name'] = name_input.text.strip() or f"Slot {slot_num}"
+                
                 try:
                     with open(filepath, 'w', encoding='utf-8') as f:
                         json.dump(data, f, indent=4)
 
+                    thumb_path = os.path.join(self.save_dir, f'slot_{slot_num}.png')
+                    if 'capture_layer' in self.interpreter.ids:
+                        self.interpreter.ids.capture_layer.export_to_png(thumb_path)
+
                     Logger.info(f"SaveLoad: Progress saved to slot {slot_num}.")
-                    self.populate_slots() 
+                    Clock.schedule_once(lambda dt: self.populate_slots(), 0.3) 
                 except Exception as e:
                     Logger.error(f"Save Error: {e}")
                     
