@@ -1,6 +1,6 @@
 # VNSdroid
 
-VNSdroid is a lightweight, Python and Kivy-based VNDS (Visual Novel Script) interpreter optimized specifically for Android devices. 
+VNSdroid ( **V**isual **N**ovel'**S** ) is a lightweight, Python and Kivy-based VNDS (Visual Novel Script) interpreter optimized specifically for Android devices. 
 
 The project addresses modern mobile hardware requirements, allowing legacy Nintendo DS visual novel ports to run smoothly on newer Android versions where older or unmaintained VNDS interpreters fail due to target API compatibility issues.
 
