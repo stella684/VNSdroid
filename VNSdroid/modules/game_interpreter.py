@@ -18,6 +18,7 @@ from kivy.clock import Clock
 from kivy.core.window import Window
 from kivy.lang import Builder
 from kivy.animation import Animation
+from kivy.factory import Factory
 
 from modules.saveload import SaveLoadPopup
 from modules.script_engine import ScriptEngine 
@@ -44,6 +45,8 @@ class VNInterpreter(BoxLayout):
     
     ui_opacity = NumericProperty(1.0)
     transition_opacity = NumericProperty(0.0)
+
+    is_text_done = BooleanProperty(False)
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -60,6 +63,17 @@ class VNInterpreter(BoxLayout):
         self.typewriter_event = None
         self.full_text = ""
         self.type_index = 0
+
+    def on_is_text_done(self, instance, value):
+        if 'indicator' in self.ids:
+            Animation.cancel_all(self.ids.indicator)
+            if value and self.dialogue_text:
+                self.ids.indicator.opacity = 1.0
+                anim = Animation(opacity=0.0, duration=0.6) + Animation(opacity=1.0, duration=0.6)
+                anim.repeat = True
+                anim.start(self.ids.indicator)
+            else:
+                self.ids.indicator.opacity = 0.0
 
     def load_settings(self):
         config_file = './assets/saves/setting_configure.txt'
@@ -157,6 +171,7 @@ class VNInterpreter(BoxLayout):
         self.ui_hidden = False
         self.drawer_open = False
         self.ui_opacity = 1.0
+        self.is_text_done = False
         
         if 'side_drawer' in self.ids:
             self.ids.side_drawer.pos_hint = {'x': 1.0, 'y': 0.0}
@@ -197,6 +212,7 @@ class VNInterpreter(BoxLayout):
                 self.typewriter_event = None
             self.char_name = ""
             self.dialogue_text = ""
+            self.is_text_done = False
             self.run_next_command()
         elif cmd == "if":
             if not self.engine.evaluate_condition(args):
@@ -324,12 +340,13 @@ class VNInterpreter(BoxLayout):
 
         self.dialogue_text = ""
         self.type_index = 0
+        self.is_text_done = False
+        
         if self.typewriter_event: self.typewriter_event.cancel()
 
         if self.full_text and text not in ["~", "!"]:
-            formatted_name = f"[b][color=F2D966]{self.char_name}[/color][/b]\n" if self.char_name else ""
+            formatted_name = f"[b][color=F2D966]{self.char_name}[/color][/b] " if self.char_name else ""
             
-          
             self.dialogue_history.append({
                 "scr": getattr(self.engine, 'current_script_name', ''),
                 "text": formatted_name + self.full_text
@@ -353,6 +370,7 @@ class VNInterpreter(BoxLayout):
             if self.typewriter_event:
                 self.typewriter_event.cancel()
                 self.typewriter_event = None
+            self.is_text_done = True
             if self.auto_mode: self.trigger_auto()
 
     def handle_setimg(self, args):
@@ -464,16 +482,22 @@ class VNInterpreter(BoxLayout):
 
     def handle_choice(self, args):
         self.auto_mode = False
+        self.is_text_done = False
+        self.ids.choice_layer.clear_widgets()
         if args:
             self.choices = [choice.strip() for choice in args.split('|')]
+            for i, choice_text in enumerate(self.choices):
+                btn = Factory.ChoiceButton(text=choice_text)
+                btn.bind(on_release=lambda instance, val=i+1: self.select_choice(val))
+                self.ids.choice_layer.add_widget(btn)
         else:
             self.choices = []
-            Logger.warning("Interpreter: Choice command triggered but no options were found.")
         self.is_choosing = True
 
     def select_choice(self, val):
         self.engine.variables["selected"] = val
         self.is_choosing = False
+        self.ids.choice_layer.clear_widgets()
         self.run_next_command()
 
     def play_audio(self, raw_args, is_music=True):
@@ -516,8 +540,10 @@ class VNInterpreter(BoxLayout):
             self.typewriter_event.cancel()
             self.typewriter_event = None
             self.dialogue_text = self.full_text
+            self.is_text_done = True
             if self.auto_mode: self.trigger_auto()
         elif not self.is_choosing: 
+            self.is_text_done = False
             self.run_next_command()
 
     def trigger_auto(self):
@@ -911,6 +937,7 @@ BoxLayout:
         self.full_text = data.get('full_text', '')
         
         self.dialogue_text = self.full_text 
+        self.is_text_done = True
         
         self.current_bg_name = data.get('bg', '')
         if self.current_bg_name: self.bg_source = self.get_asset('background', self.current_bg_name)
