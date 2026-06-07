@@ -12,6 +12,21 @@
             size: self.size
             radius: [dp(12)]
 
+<ChoiceButton@Button>:
+    font_name: './assets/jpfont.ttf'
+    size_hint_y: None
+    height: '48dp'
+    background_normal: ''
+    background_color: 0, 0, 0, 0
+    color: 1, 1, 1, 1
+    canvas.before:
+        Color:
+            rgba: (0.09, 0.09, 0.1, 0.95) if self.state == 'normal' else (0.18, 0.18, 0.2, 0.95)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(15)]
+
 <VNInterpreter>:
     canvas.after:
         Color:
@@ -28,19 +43,16 @@
                 pos: self.pos
                 size: self.size
 
-        # --- CAPTURE LAYER (Background + Sprites Only) ---
         FloatLayout:
             id: capture_layer
             size_hint: 1, 1
 
-            # --- 1. BACKGROUND LAYER ---
             Image:
                 id: bg_image
                 source: root.bg_source
                 allow_stretch: True
                 keep_ratio: root.bg_keep_ratio
 
-            # --- 2. CENTERED GAME LAYER ---
             AnchorLayout:
                 anchor_x: 'center'
                 anchor_y: 'center'
@@ -60,96 +72,125 @@
             disabled: root.ui_hidden
             size_hint: 1, 1
 
-            BoxLayout:
-                orientation: 'vertical'
-                size_hint: 1, None
-                height: '130dp'
-                pos_hint: {'x': 0, 'y': 0}
-                padding: ['15dp', '5dp', '15dp', '10dp']
-                
-                canvas.before:
-                    Color:
-                        rgba: 0, 0, 0, 0.85
-                    Rectangle:
-                        pos: self.x, self.y
-                        size: self.width, self.height - dp(30)
-                    Color:
-                        rgba: 0, 0, 0, 0.7
-                    Rectangle:
-                        pos: self.x, self.y + self.height - dp(30)
-                        size: self.width, dp(3)
-                    Color:
-                        rgba: 0, 0, 0, 0.55
-                    Rectangle:
-                        pos: self.x, self.y + self.height - dp(27)
-                        size: self.width, dp(3)
-                    Color:
-                        rgba: 0, 0, 0, 0.4
-                    Rectangle:
-                        pos: self.x, self.y + self.height - dp(24)
-                        size: self.width, dp(3)
-                    Color:
-                        rgba: 0, 0, 0, 0.28
-                    Rectangle:
-                        pos: self.x, self.y + self.height - dp(21)
-                        size: self.width, dp(3)
-                    Color:
-                        rgba: 0, 0, 0, 0.18
-                    Rectangle:
-                        pos: self.x, self.y + self.height - dp(18)
-                        size: self.width, dp(3)
-                    Color:
-                        rgba: 0, 0, 0, 0.1
-                    Rectangle:
-                        pos: self.x, self.y + self.height - dp(15)
-                        size: self.width, dp(3)
-                    Color:
-                        rgba: 0, 0, 0, 0.05
-                    Rectangle:
-                        pos: self.x, self.y + self.height - dp(12)
-                        size: self.width, dp(3)
-                    Color:
-                        rgba: 0, 0, 0, 0.02
-                    Rectangle:
-                        pos: self.x, self.y + self.height - dp(9)
-                        size: self.width, dp(3)
-                    Color:
-                        rgba: 0, 0, 0, 0.01
-                    Rectangle:
-                        pos: self.x, self.y + self.height - dp(6)
-                        size: self.width, dp(3)
+            AnchorLayout:
+                anchor_x: 'center'
+                anchor_y: 'bottom'
+                size_hint: 1, 1
+                padding: [0, 0, 0, 0]
 
-                Label:
-                    text: root.char_name
-                    font_name: './assets/jpfont.ttf'
-                    font_size: '19sp'
-                    bold: True
-                    outline_width: 2
-                    outline_color: 0, 0, 0, 1
+                BoxLayout:
+                    id: text_box_container
+                    orientation: 'vertical'
+                    size_hint_x: None
+                    width: game_viewport.width if root.bg_keep_ratio else root.width
+                    size_hint_y: None
+                    height: max(dp(150), min(dialogue_label.texture_size[1] + dp(70), dp(300)))
+                    padding: ['20dp', '45dp', '20dp', '25dp']
                     
-                    
-                    size_hint: None, None
-                    height: '25dp'
-                    width: self.texture_size[0]
-                    
-                    halign: 'left'
-                    valign: 'middle'
-                    color: 1, 0.85, 0.3, 1
+                    canvas.before:
+                        Color:
+                            rgba: 0, 0, 0, 0.85
+                        Rectangle:
+                            pos: self.x, self.y
+                            size: self.width, self.height - dp(35)
+                        Color:
+                            rgba: 0, 0, 0, 0.7
+                        Rectangle:
+                            pos: self.x, self.y + self.height - dp(35)
+                            size: self.width, dp(4)
+                        Color:
+                            rgba: 0, 0, 0, 0.55
+                        Rectangle:
+                            pos: self.x, self.y + self.height - dp(31)
+                            size: self.width, dp(4)
+                        Color:
+                            rgba: 0, 0, 0, 0.4
+                        Rectangle:
+                            pos: self.x, self.y + self.height - dp(27)
+                            size: self.width, dp(4)
+                        Color:
+                            rgba: 0, 0, 0, 0.28
+                        Rectangle:
+                            pos: self.x, self.y + self.height - dp(23)
+                            size: self.width, dp(3)
+                        Color:
+                            rgba: 0, 0, 0, 0.18
+                        Rectangle:
+                            pos: self.x, self.y + self.height - dp(20)
+                            size: self.width, dp(3)
+                        Color:
+                            rgba: 0, 0, 0, 0.1
+                        Rectangle:
+                            pos: self.x, self.y + self.height - dp(17)
+                            size: self.width, dp(3)
+                        Color:
+                            rgba: 0, 0, 0, 0.05
+                        Rectangle:
+                            pos: self.x, self.y + self.height - dp(14)
+                            size: self.width, dp(3)
+                        Color:
+                            rgba: 0, 0, 0, 0.02
+                        Rectangle:
+                            pos: self.x, self.y + self.height - dp(11)
+                            size: self.width, dp(3)
+                        Color:
+                            rgba: 0, 0, 0, 0.01
+                        Rectangle:
+                            pos: self.x, self.y + self.height - dp(8)
+                            size: self.width, dp(3)
 
-                ScrollView:
-                    do_scroll_x: False
-                    do_scroll_y: True
-                    
-                    Label:
-                        text: root.dialogue_text
-                        font_name: './assets/jpfont.ttf'
-                        font_size: '16sp'
-                        size_hint_y: None
-                        height: self.texture_size[1]
-                        halign: 'left'
-                        valign: 'top'
-                        text_size: self.width, None
-                        color: 1, 1, 1, 1
+                    ScrollView:
+                        do_scroll_x: False
+                        do_scroll_y: True
+                        
+                        BoxLayout:
+                            orientation: 'vertical'
+                            size_hint_y: None
+                            height: max(self.minimum_height, self.parent.height if self.parent else 0)
+                            
+                            Label:
+                                id: dialogue_label
+                                text: root.dialogue_text
+                                font_name: './assets/jpfont.ttf'
+                                font_size: '16sp'
+                                size_hint_y: None
+                                height: self.texture_size[1]
+                                halign: 'left'
+                                valign: 'top'
+                                text_size: self.width, None
+                                color: 1, 1, 1, 1
+
+                            Widget:
+                                size_hint_y: 1
+
+            Label:
+                id: name_label
+                text: root.char_name
+                font_name: './assets/jpfont.ttf'
+                font_size: '19sp'
+                bold: True
+                outline_width: 2
+                outline_color: 0, 0, 0, 1
+                size_hint: None, None
+                height: self.texture_size[1] if self.text else 0
+                width: self.texture_size[0]
+                halign: 'left'
+                valign: 'middle'
+                color: 1, 0.85, 0.3, 1
+                x: text_box_container.x + dp(20)
+                y: text_box_container.top - dp(25)
+
+            Label:
+                id: indicator
+                text: "▼"
+                font_name: './assets/jpfont.ttf'
+                font_size: '22sp'
+                size_hint: None, None
+                size: self.texture_size
+                right: text_box_container.right - dp(20)
+                y: text_box_container.y + dp(15)
+                color: 1, 0.85, 0.3, 1
+                opacity: 0.0
 
         FloatLayout:
             id: custom_ui_layer
@@ -174,40 +215,6 @@
             opacity: 1 if root.is_choosing else 0
             disabled: not root.is_choosing
             spacing: '10dp'
-            
-            Button:
-                text: root.choices[0] if len(root.choices) > 0 else ""
-                font_name: './assets/jpfont.ttf'
-                size_hint_y: None
-                height: '48dp'
-                background_normal: ''
-                background_color: 0, 0, 0, 0
-                color: 1, 1, 1, 1
-                on_release: root.select_choice(1)
-                canvas.before:
-                    Color:
-                        rgba: (0.09, 0.09, 0.1, 0.95) if self.state == 'normal' else (0.18, 0.18, 0.2, 0.95)
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [dp(15)]
-            
-            Button:
-                text: root.choices[1] if len(root.choices) > 1 else ""
-                font_name: './assets/jpfont.ttf'
-                size_hint_y: None
-                height: '48dp'
-                background_normal: ''
-                background_color: 0, 0, 0, 0
-                color: 1, 1, 1, 1
-                on_release: root.select_choice(2)
-                canvas.before:
-                    Color:
-                        rgba: (0.09, 0.09, 0.1, 0.95) if self.state == 'normal' else (0.18, 0.18, 0.2, 0.95)
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [dp(15)]
 
         FloatLayout:
             opacity: root.ui_opacity
@@ -266,7 +273,6 @@
                         
                         DrawerButton:
                             text: "Auto-Play < ON >" if root.auto_mode else "Auto-Play < OFF >"
-                          
                             on_release: 
                                 root.toggle_auto()
                         
